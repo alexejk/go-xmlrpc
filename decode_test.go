@@ -31,6 +31,34 @@ func TestDecodeResponse(t *testing.T) {
 				Int:   12345,
 			},
 		},
+		{
+			name:     "array response",
+			testFile: "response_array.xml",
+			v: &struct {
+				Ints []int
+			}{},
+			expect: &struct {
+				Ints []int
+			}{
+				Ints: []int{
+					10, 11, 12,
+				},
+			},
+		},
+		{
+			name:     "array response - mixed content",
+			testFile: "response_array_mixed.xml",
+			v: &struct {
+				Mixed []interface{}
+			}{},
+			expect: &struct {
+				Mixed []interface{}
+			}{
+				Mixed: []interface{}{
+					10, "s11", true,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

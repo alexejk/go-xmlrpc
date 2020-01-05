@@ -19,15 +19,15 @@ type respParam struct {
 }
 
 type respValue struct {
-	Array    []respValue        `xml:"array>data>value"`
-	Struct   []respStructMember `xml:"struct>member"`
-	String   string             `xml:"string"`
-	Int      string             `xml:"int"`
-	Int4     string             `xml:"i4"`
-	Double   string             `xml:"double"`
-	Boolean  string             `xml:"boolean"`
-	DateTime string             `xml:"dateTime.iso8601"`
-	Base64   string             `xml:"base64"`
+	Array    []*respValue        `xml:"array>data>value"`
+	Struct   []*respStructMember `xml:"struct>member"`
+	String   string              `xml:"string"`
+	Int      string              `xml:"int"`
+	Int4     string              `xml:"i4"`
+	Double   string              `xml:"double"`
+	Boolean  string              `xml:"boolean"`
+	DateTime string              `xml:"dateTime.iso8601"`
+	Base64   string              `xml:"base64"`
 
 	Raw string `xml:",innerxml"` // the value can be default string
 }
@@ -100,6 +100,17 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 
 	case value.DateTime != "":
 		val, err = decodeDateTime(value.DateTime)
+
+	case len(value.Array) > 0:
+		slice := reflect.MakeSlice(reflect.TypeOf(field.Interface()), len(value.Array), len(value.Array))
+		for i, v := range value.Array {
+			item := slice.Index(i)
+			if err := decodeValue(v, &item); err != nil {
+				return fmt.Errorf("failed decoding array item at index %d: %w", i, err)
+			}
+		}
+
+		val = slice.Interface()
 	}
 
 	if err != nil {

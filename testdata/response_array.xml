@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<methodResponse>
+    <params>
+        <param>
+            <value>
+                <array>
+                    <data>
+                        <value><int>10</int></value>
+                        <value><int>11</int></value>
+                        <value><int>12</int></value>
+                    </data>
+                </array>
+            </value>
+        </param>
+    </params>
+</methodResponse>
