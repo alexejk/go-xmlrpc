@@ -46,8 +46,13 @@ type respFault struct {
 	Value respValue `xml:"value"`
 }
 
-func (f respFault) IsEmpty() bool {
-	return len(f.Value.Struct) == 0
+type Fault struct {
+	Code   int
+	String string
+}
+
+func (f *Fault) Error() string {
+	return fmt.Sprintf("%d: %s", f.Code, f.String)
 }
 
 func DecodeResponse(body string, v interface{}) error {
@@ -58,7 +63,7 @@ func DecodeResponse(body string, v interface{}) error {
 	}
 
 	if wrapper.Fault != nil {
-		// TODO: Handle fault response
+		return decodeFault(wrapper.Fault)
 	}
 
 	// Validate that v has same number of public fields as response params
@@ -76,6 +81,25 @@ func DecodeResponse(body string, v interface{}) error {
 	}
 
 	return nil
+}
+
+func decodeFault(fault *respFault) *Fault {
+
+	f := &Fault{}
+	for _, m := range fault.Value.Struct {
+		switch m.Name {
+		case "faultCode":
+			if m.Value.Int != "" {
+				f.Code, _ = strconv.Atoi(m.Value.Int)
+			} else {
+				f.Code, _ = strconv.Atoi(m.Value.Int4)
+			}
+		case "faultString":
+			f.String = m.Value.String
+		}
+	}
+
+	return f
 }
 
 func decodeValue(value *respValue, field *reflect.Value) error {

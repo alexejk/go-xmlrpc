@@ -1,6 +1,7 @@
 package xmlrpc
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -122,6 +123,21 @@ func TestDecodeResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDecodeResponse_Fault(t *testing.T) {
+	decodeTarget := &struct {
+		Ints []int
+	}{}
+	err := DecodeResponse(loadTestFile(t, "response_fault.xml"), decodeTarget)
+	assert.Error(t, err)
+
+	fT := &Fault{}
+	assert.True(t, errors.As(err, &fT))
+	assert.EqualValues(t, &Fault{
+		Code:   4,
+		String: "Too many parameters.",
+	}, fT)
 }
 
 func Test_fieldsMustEqual(t *testing.T) {
