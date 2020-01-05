@@ -1,6 +1,7 @@
 package xmlrpc
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -59,6 +60,56 @@ func TestDecodeResponse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:     "array response - bad param",
+			testFile: "response_array.xml",
+			v: &struct {
+				Ints string // <- This is unexpected type
+			}{},
+			expect: nil,
+			err:    fmt.Errorf(errFormatInvalidFieldType, "slice", "string"),
+		},
+		{
+			name:     "struct response",
+			testFile: "response_struct.xml",
+			v: &struct {
+				Struct struct {
+					Foo          string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{},
+			expect: &struct {
+				Struct struct {
+					Foo          string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{
+				Struct: struct {
+					Foo          string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}{
+					Foo:          "bar",
+					Baz:          2,
+					WoBleBobble:  true,
+					WoBleBobble2: 34,
+				},
+			},
+		},
+		{
+			name:     "struct response - bad param",
+			testFile: "response_struct.xml",
+			v: &struct {
+				Struct string // <- This is unexpected type
+			}{},
+			expect: nil,
+			err:    fmt.Errorf(errFormatInvalidFieldType, "struct", "string"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -66,7 +117,9 @@ func TestDecodeResponse(t *testing.T) {
 
 			err := DecodeResponse(loadTestFile(t, tt.testFile), tt.v)
 			assert.Equal(t, tt.err, err)
-			assert.EqualValues(t, tt.expect, tt.v)
+			if tt.err == nil {
+				assert.EqualValues(t, tt.expect, tt.v)
+			}
 		})
 	}
 }

@@ -6,7 +6,12 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
+)
+
+const (
+	errFormatInvalidFieldType = "invalid field type: expected '%s', got '%s'"
 )
 
 type respWrapper struct {
@@ -101,7 +106,13 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 	case value.DateTime != "":
 		val, err = decodeDateTime(value.DateTime)
 
+	// Array decoding
 	case len(value.Array) > 0:
+
+		if field.Kind() != reflect.Slice {
+			return fmt.Errorf(errFormatInvalidFieldType, reflect.Slice.String(), field.Kind().String())
+		}
+
 		slice := reflect.MakeSlice(reflect.TypeOf(field.Interface()), len(value.Array), len(value.Array))
 		for i, v := range value.Array {
 			item := slice.Index(i)
@@ -111,6 +122,30 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 		}
 
 		val = slice.Interface()
+
+	// Struct decoding
+	case len(value.Struct) != 0:
+		if field.Kind() != reflect.Struct {
+			return fmt.Errorf(errFormatInvalidFieldType, reflect.Struct.String(), field.Kind().String())
+		}
+
+		for _, m := range value.Struct {
+
+			// Upper-case the name
+			fName := strings.Title(m.Name)
+			f := field.FieldByName(fName)
+
+			if !f.IsValid() {
+				return fmt.Errorf("cannot find field '%s' on struct", fName)
+			}
+
+			if err := decodeValue(&m.Value, &f); err != nil {
+				return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
+			}
+		}
+
+	default:
+		// NADA
 	}
 
 	if err != nil {

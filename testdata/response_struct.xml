@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<methodResponse>
+    <params>
+        <param>
+            <value>
+                <struct>
+                    <member>
+                        <name>foo</name>
+                        <value><string>bar</string></value>
+                    </member>
+                    <member>
+                        <name>baz</name>
+                        <value><i4>2</i4></value>
+                    </member>
+                    <member>
+                        <name>woBleBobble</name>
+                        <value><boolean>1</boolean></value>
+                    </member>
+                    <member>
+                        <name>WoBleBobble2</name>
+                        <value><int>34</int></value>
+                    </member>
+                </struct>
+            </value>
+        </param>
+    </params>
+</methodResponse>
