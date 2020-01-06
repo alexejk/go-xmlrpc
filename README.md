@@ -4,17 +4,35 @@ This is an implementation of client-side part of XML-RPC protocol in Go.
 
 ## Usage
 
+Add dependency to your project:
+
+```shell
+go get -u alexejk.io/go-xmlrpc
+```
+
+Use it by creating an `*xmlrpc.Client` and firing RPC method calls with `Call()`.
+
 ```go
-client, _ := NewClient("https://bugzilla.mozilla.org/xmlrpc.cgi")
+package main
 
-resp := &struct {
-    BugzillaVersion struct {
-        Version string
-    }
-}{}
+import(
+    "fmt"
 
-_ = c.Call("Bugzilla.version", nil, resp)
-fmt.Printf("Version: %s\n", result.BugzillaVersion.Version)
+    "alexejk.io/go-xmlrpc"
+)
+
+func main() {
+    client, _ := xmlrpc.NewClient("https://bugzilla.mozilla.org/xmlrpc.cgi")
+
+    result := &struct {
+        BugzillaVersion struct {
+            Version string
+        }
+    }{}
+
+    _ = client.Call("Bugzilla.version", nil, result)
+    fmt.Printf("Version: %s\n", result.BugzillaVersion.Version)
+}
 ```
 
 If you want to customize any aspect of `http.Client` used to perform requests, use `NewClientWithHttpClient` instead.
