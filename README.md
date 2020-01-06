@@ -26,5 +26,11 @@ Arguments to the remote RPC method are passed on as a `*struct`. This struct is 
 
 * Order of fields in struct type matters - fields are taken in the order they are defined on the **type**.
 * Numbers are to be specified as `int` (encoded as `<int>`) or `float64` (encoded as `<double>`)
+* Both pointer and value references are accepted (pointers are followed to actual values)
 
 ### Response decoding
+
+Response is decoded following similar rules to argument encoding.
+
+* Order of fields is important.
+* Outer struct should contain exported field for each response parameter.
