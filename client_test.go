@@ -74,3 +74,20 @@ func TestClient_Fault(t *testing.T) {
 	err = c.Call("my.fault", req, resp)
 	assert.Error(t, err)
 }
+
+func TestClient_Bugzilla(t *testing.T) {
+
+	c, err := NewClient("https://bugzilla.mozilla.org/xmlrpc.cgi")
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+
+	resp := &struct {
+		BugzillaVersion struct {
+			Version string
+		}
+	}{}
+
+	err = c.Call("Bugzilla.version", nil, resp)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, resp.BugzillaVersion.Version)
+}

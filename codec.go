@@ -57,6 +57,7 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 	}
 
 	httpRequest.Header.Set("Content-Type", "text/xml")
+	httpRequest.Header.Set("User-Agent", "alexejk.io/go-xmlrpc")
 	httpRequest.Header.Set("Content-Length", fmt.Sprintf("%d", bodyBuffer.Len()))
 
 	httpResponse, err := c.httpClient.Do(httpRequest)
