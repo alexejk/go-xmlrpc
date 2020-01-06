@@ -19,6 +19,7 @@ jobs:
 
       - name: Generate Changelog
         run: |
+          mkdir -p build
           VERSION=$(hack/version.sh)
           hack/changelog.sh $VERSION > build/${{ github.workflow }}-CHANGELOG.md
 
