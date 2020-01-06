@@ -46,25 +46,30 @@ type respFault struct {
 	Value respValue `xml:"value"`
 }
 
-type Fault struct {
-	Code   int
-	String string
-}
+func DecodeResponse(body []byte, v interface{}) error {
 
-func (f *Fault) Error() string {
-	return fmt.Sprintf("%d: %s", f.Code, f.String)
-}
-
-func DecodeResponse(body string, v interface{}) error {
-
-	wrapper := &respWrapper{}
-	if err := xml.Unmarshal([]byte(body), wrapper); err != nil {
+	wrapper, err := toRespWrapper(body)
+	if err != nil {
 		return err
 	}
 
 	if wrapper.Fault != nil {
 		return decodeFault(wrapper.Fault)
 	}
+
+	return decodeWrapper(wrapper, v)
+}
+
+func toRespWrapper(body []byte) (*respWrapper, error) {
+	wrapper := &respWrapper{}
+	if err := xml.Unmarshal(body, wrapper); err != nil {
+		return nil, err
+	}
+
+	return wrapper, nil
+}
+
+func decodeWrapper(wrapper *respWrapper, v interface{}) error {
 
 	// Validate that v has same number of public fields as response params
 	if err := fieldsMustEqual(v, len(wrapper.Params)); err != nil {

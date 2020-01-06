@@ -192,12 +192,12 @@ func Test_fieldsMustEqual(t *testing.T) {
 	}
 }
 
-func loadTestFile(t *testing.T, name string) string {
+func loadTestFile(t *testing.T, name string) []byte {
 
 	path := filepath.Join("testdata", name) // relative path
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(bytes)
+	return bytes
 }
