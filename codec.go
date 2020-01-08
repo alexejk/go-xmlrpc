@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// Codec implements methods required by rpc.ClientCodec
+// In this implementation Codec is the one performing actual RPC requests with http.Client.
 type Codec struct {
 	endpoint   *url.URL
 	httpClient *http.Client
@@ -20,7 +22,9 @@ type Codec struct {
 	pending map[uint64]*rpcCall
 
 	// Current in-flight response
-	response *decodableResponse
+	response *Response
+	encoder  Encoder
+	decoder  Decoder
 
 	// presents completed requests by sequence ID
 	ready chan uint64
@@ -32,10 +36,15 @@ type rpcCall struct {
 	httpResponse  *http.Response
 }
 
+// NewCodec creates a new Codec bound to provided endpoint.
+// Provided client will be used to perform RPC requests.
 func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 	return &Codec{
 		endpoint:   endpoint,
 		httpClient: httpClient,
+
+		encoder: &StdEncoder{},
+		decoder: &StdDecoder{},
 
 		pending:  make(map[uint64]*rpcCall),
 		response: nil,
@@ -46,7 +55,7 @@ func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 
 	bodyBuffer := new(bytes.Buffer)
-	err := EncodeMethodCall(bodyBuffer, req.ServiceMethod, args)
+	err := c.encoder.Encode(bodyBuffer, req.ServiceMethod, args)
 	if err != nil {
 		return err
 	}
@@ -105,14 +114,14 @@ func (c *Codec) ReadResponseHeader(resp *rpc.Response) error {
 		return nil
 	}
 
-	decodableResponse, err := newDecodableResponse(body)
+	decodableResponse, err := NewResponse(body)
 	if err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
 
 	// Return response Fault already a this stage
-	if err := decodableResponse.Fault(); err != nil {
+	if err := c.decoder.DecodeFault(decodableResponse); err != nil {
 		resp.Error = err.Error()
 		return nil
 	}
@@ -131,7 +140,7 @@ func (c *Codec) ReadResponseBody(v interface{}) error {
 		return errors.New("no in-flight response found")
 	}
 
-	return c.response.Decode(v)
+	return c.decoder.Decode(c.response, v)
 }
 
 func (c *Codec) Close() error {

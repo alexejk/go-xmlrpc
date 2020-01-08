@@ -7,15 +7,20 @@ import (
 	"net/url"
 )
 
+// Client is responsible for making calls to RPC services with help of underlying rpc.Client.
 type Client struct {
 	*rpc.Client
 }
 
+// NewClient creates a Client with http.DefaultClient.
+// If provided endpoint is not valid, an error is returned.
 func NewClient(endpoint string) (*Client, error) {
 
 	return NewClientWithHttpClient(endpoint, http.DefaultClient)
 }
 
+// NewClientWithHttpClient allows customization of http.Client used to make RPC calls.
+// If provided endpoint is not valid, an error is returned.
 func NewClientWithHttpClient(endpoint string, httpClient *http.Client) (*Client, error) {
 
 	// Parse Endpoint URL

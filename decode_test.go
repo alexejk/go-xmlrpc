@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDecodeResponse(t *testing.T) {
+func TestStdDecoder_DecodeRaw(t *testing.T) {
 	tests := []struct {
 		name     string
 		testFile string
@@ -116,7 +116,8 @@ func TestDecodeResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			err := DecodeResponse(loadTestFile(t, tt.testFile), tt.v)
+			dec := &StdDecoder{}
+			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
 			assert.Equal(t, tt.err, err)
 			if tt.err == nil {
 				assert.EqualValues(t, tt.expect, tt.v)
@@ -125,11 +126,12 @@ func TestDecodeResponse(t *testing.T) {
 	}
 }
 
-func TestDecodeResponse_Fault(t *testing.T) {
+func TestStdDecoder_DecodeRaw_Fault(t *testing.T) {
 	decodeTarget := &struct {
 		Ints []int
 	}{}
-	err := DecodeResponse(loadTestFile(t, "response_fault.xml"), decodeTarget)
+	dec := &StdDecoder{}
+	err := dec.DecodeRaw(loadTestFile(t, "response_fault.xml"), decodeTarget)
 	assert.Error(t, err)
 
 	fT := &Fault{}

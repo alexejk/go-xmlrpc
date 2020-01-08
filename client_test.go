@@ -17,8 +17,8 @@ func TestClient_Call(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		m := &struct {
-			Name   string       `xml:"methodName"`
-			Params []*respParam `xml:"params>param"`
+			Name   string           `xml:"methodName"`
+			Params []*ResponseParam `xml:"params>param"`
 		}{}
 		body, err := ioutil.ReadAll(r.Body)
 		assert.NoError(t, err, "test server: read body")

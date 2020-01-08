@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEncodeMethodCall(t *testing.T) {
+func TestStdEncoder_Encode(t *testing.T) {
 	tests := []struct {
 		name       string
 		methodName string
@@ -124,15 +124,15 @@ func TestEncodeMethodCall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			buf := new(strings.Builder)
-
-			err := EncodeMethodCall(buf, tt.methodName, tt.args)
+			enc := &StdEncoder{}
+			err := enc.Encode(buf, tt.methodName, tt.args)
 			assert.Equal(t, tt.expect, buf.String())
 			assert.Equal(t, tt.err, err)
 		})
 	}
 }
 
-func Test_isByteArray(t *testing.T) {
+func TestStdEncoder_isByteArray(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  interface{}
@@ -167,7 +167,8 @@ func Test_isByteArray(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp := isByteArray(tt.input)
+			enc := &StdEncoder{}
+			resp := enc.isByteArray(tt.input)
 			assert.Equal(t, tt.expect, resp)
 		})
 	}
@@ -205,7 +206,8 @@ func Test_encodeArray(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			buf := new(strings.Builder)
-			err := encodeArray(buf, tt.input)
+			enc := &StdEncoder{}
+			err := enc.encodeArray(buf, tt.input)
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})
@@ -240,7 +242,8 @@ func Test_encodeBase64(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			buf := new(strings.Builder)
-			err := encodeBase64(buf, tt.input)
+			enc := &StdEncoder{}
+			err := enc.encodeBase64(buf, tt.input)
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})
@@ -311,7 +314,8 @@ func Test_encodeStruct(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			buf := new(strings.Builder)
-			err := encodeStruct(buf, tt.input)
+			enc := &StdEncoder{}
+			err := enc.encodeStruct(buf, tt.input)
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})
@@ -361,7 +365,8 @@ func Test_encodeTime(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			buf := new(strings.Builder)
-			err := encodeTime(buf, tt.input)
+			enc := &StdEncoder{}
+			err := enc.encodeTime(buf, tt.input)
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})

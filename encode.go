@@ -9,12 +9,19 @@ import (
 	"time"
 )
 
-func EncodeMethodCall(w io.Writer, methodName string, args interface{}) error {
+// Encoder implementations are responsible for handling encoding of XML-RPC requests to the proper wire format.
+type Encoder interface {
+	Encode(w io.Writer, methodName string, args interface{}) error
+}
 
+// StdEncoder is the default implementation of Encoder interface.
+type StdEncoder struct{}
+
+func (e *StdEncoder) Encode(w io.Writer, methodName string, args interface{}) error {
 	_, _ = fmt.Fprintf(w, "<methodCall><methodName>%s</methodName>", methodName)
 
 	if args != nil {
-		if err := encodeArgs(w, args); err != nil {
+		if err := e.encodeArgs(w, args); err != nil {
 			return fmt.Errorf("cannot encoded provided method arguments: %w", err)
 		}
 	}
@@ -24,7 +31,7 @@ func EncodeMethodCall(w io.Writer, methodName string, args interface{}) error {
 	return nil
 }
 
-func encodeArgs(w io.Writer, args interface{}) error {
+func (e *StdEncoder) encodeArgs(w io.Writer, args interface{}) error {
 
 	// Allows reading both pointer and value-structs
 	elem := reflect.Indirect(reflect.ValueOf(args))
@@ -46,7 +53,7 @@ func encodeArgs(w io.Writer, args interface{}) error {
 			}
 
 			_, _ = fmt.Fprint(w, "<param>")
-			if err := encodeValue(w, field.Interface()); err != nil {
+			if err := e.encodeValue(w, field.Interface()); err != nil {
 				return fmt.Errorf("cannot encode argument '%s': %w", elem.Type().Field(fN).Name, err)
 			}
 			_, _ = fmt.Fprint(w, "</param>")
@@ -66,7 +73,7 @@ func encodeArgs(w io.Writer, args interface{}) error {
 // In that case a <nil/> value is returned.
 //
 // See more: https://en.wikipedia.org/wiki/XML-RPC#Data_types
-func encodeValue(w io.Writer, value interface{}) error {
+func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 
 	valueOf := reflect.ValueOf(value)
 	kind := valueOf.Kind()
@@ -77,51 +84,51 @@ func encodeValue(w io.Writer, value interface{}) error {
 			_, _ = fmt.Fprint(w, "<value><nil/></value>")
 			return nil
 		}
-		return encodeValue(w, valueOf.Elem().Interface())
+		return e.encodeValue(w, valueOf.Elem().Interface())
 	}
 
 	_, _ = fmt.Fprint(w, "<value>")
 	switch kind {
 
 	case reflect.Bool:
-		if err := encodeBoolean(w, value.(bool)); err != nil {
+		if err := e.encodeBoolean(w, value.(bool)); err != nil {
 			return fmt.Errorf("cannot encode boolean value: %w", err)
 		}
 
 	case reflect.Int:
-		if err := encodeInteger(w, value.(int)); err != nil {
+		if err := e.encodeInteger(w, value.(int)); err != nil {
 			return fmt.Errorf("cannot encode integer value: %w", err)
 		}
 
 	case reflect.Float64:
-		if err := encodeDouble(w, value.(float64)); err != nil {
+		if err := e.encodeDouble(w, value.(float64)); err != nil {
 			return fmt.Errorf("cannot encode double value: %w", err)
 		}
 
 	case reflect.String:
-		if err := encodeString(w, value.(string)); err != nil {
+		if err := e.encodeString(w, value.(string)); err != nil {
 			return fmt.Errorf("cannot encode string value: %w", err)
 		}
 
 	case reflect.Array, reflect.Slice:
 
-		if isByteArray(value) {
-			if err := encodeBase64(w, value.([]byte)); err != nil {
+		if e.isByteArray(value) {
+			if err := e.encodeBase64(w, value.([]byte)); err != nil {
 				return fmt.Errorf("cannot encode byte-array value: %w", err)
 			}
 		} else {
-			if err := encodeArray(w, value); err != nil {
+			if err := e.encodeArray(w, value); err != nil {
 				return fmt.Errorf("cannot encode array value: %w", err)
 			}
 		}
 
 	case reflect.Struct:
 		if reflect.TypeOf(value).String() != "time.Time" {
-			if err := encodeStruct(w, value); err != nil {
+			if err := e.encodeStruct(w, value); err != nil {
 				return fmt.Errorf("cannot encode struct value: %w", err)
 			}
 		} else {
-			if err := encodeTime(w, value.(time.Time)); err != nil {
+			if err := e.encodeTime(w, value.(time.Time)); err != nil {
 				return fmt.Errorf("cannot encode time.Time value: %w", err)
 			}
 		}
@@ -131,25 +138,25 @@ func encodeValue(w io.Writer, value interface{}) error {
 	return nil
 }
 
-func isByteArray(val interface{}) bool {
+func (e *StdEncoder) isByteArray(val interface{}) bool {
 
 	_, ok := val.([]byte)
 	return ok
 }
 
-func encodeInteger(w io.Writer, val int) error {
+func (e *StdEncoder) encodeInteger(w io.Writer, val int) error {
 
 	_, err := fmt.Fprintf(w, "<int>%d</int>", val)
 	return err
 }
 
-func encodeDouble(w io.Writer, val float64) error {
+func (e *StdEncoder) encodeDouble(w io.Writer, val float64) error {
 
 	_, err := fmt.Fprintf(w, "<double>%f</double>", val)
 	return err
 }
 
-func encodeBoolean(w io.Writer, val bool) error {
+func (e *StdEncoder) encodeBoolean(w io.Writer, val bool) error {
 
 	v := 0
 	if val {
@@ -160,7 +167,7 @@ func encodeBoolean(w io.Writer, val bool) error {
 	return err
 }
 
-func encodeString(w io.Writer, val string) error {
+func (e *StdEncoder) encodeString(w io.Writer, val string) error {
 
 	_, _ = fmt.Fprint(w, "<string>")
 	if err := xml.EscapeText(w, []byte(val)); err != nil {
@@ -171,11 +178,11 @@ func encodeString(w io.Writer, val string) error {
 	return nil
 }
 
-func encodeArray(w io.Writer, val interface{}) error {
+func (e *StdEncoder) encodeArray(w io.Writer, val interface{}) error {
 
 	_, _ = fmt.Fprint(w, "<array><data>")
 	for i := 0; i < reflect.ValueOf(val).Len(); i++ {
-		if err := encodeValue(w, reflect.ValueOf(val).Index(i).Interface()); err != nil {
+		if err := e.encodeValue(w, reflect.ValueOf(val).Index(i).Interface()); err != nil {
 			return fmt.Errorf("cannot encode array element at index %d: %w", i, err)
 		}
 	}
@@ -185,7 +192,7 @@ func encodeArray(w io.Writer, val interface{}) error {
 	return nil
 }
 
-func encodeStruct(w io.Writer, val interface{}) error {
+func (e *StdEncoder) encodeStruct(w io.Writer, val interface{}) error {
 
 	_, _ = fmt.Fprint(w, "<struct>")
 	for i := 0; i < reflect.TypeOf(val).NumField(); i++ {
@@ -203,7 +210,7 @@ func encodeStruct(w io.Writer, val interface{}) error {
 		}
 		_, _ = fmt.Fprintf(w, "<member><name>%s</name>", fieldName)
 
-		if err := encodeValue(w, field.Interface()); err != nil {
+		if err := e.encodeValue(w, field.Interface()); err != nil {
 			return fmt.Errorf("cannot encode value of struct field '%s': %w", fieldName, err)
 		}
 		_, _ = fmt.Fprint(w, "</member>")
@@ -213,13 +220,13 @@ func encodeStruct(w io.Writer, val interface{}) error {
 	return nil
 }
 
-func encodeBase64(w io.Writer, val []byte) error {
+func (e *StdEncoder) encodeBase64(w io.Writer, val []byte) error {
 
 	_, err := fmt.Fprintf(w, "<base64>%s</base64>", base64.StdEncoding.EncodeToString(val))
 	return err
 }
 
-func encodeTime(w io.Writer, val time.Time) error {
+func (e *StdEncoder) encodeTime(w io.Writer, val time.Time) error {
 
 	_, err := fmt.Fprintf(w, "<dateTime.iso8601>%s</dateTime.iso8601>", val.Format(time.RFC3339))
 	return err

@@ -2,7 +2,6 @@ package xmlrpc
 
 import (
 	"encoding/base64"
-	"encoding/xml"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -14,73 +13,42 @@ const (
 	errFormatInvalidFieldType = "invalid field type: expected '%s', got '%s'"
 )
 
-type respWrapper struct {
-	Params []respParam `xml:"params>param"`
-	Fault  *respFault  `xml:"fault,omitempty"`
+// Decoder implementations provide mechanisms for parsing of XML-RPC responses to native data-types.
+type Decoder interface {
+	DecodeRaw(body []byte, v interface{}) error
+	Decode(response *Response, v interface{}) error
+	DecodeFault(response *Response) *Fault
 }
 
-type respParam struct {
-	Value respValue `xml:"value"`
-}
+// StdDecoder is the default implementation of the Decoder interface.
+type StdDecoder struct{}
 
-type respValue struct {
-	Array    []*respValue        `xml:"array>data>value"`
-	Struct   []*respStructMember `xml:"struct>member"`
-	String   string              `xml:"string"`
-	Int      string              `xml:"int"`
-	Int4     string              `xml:"i4"`
-	Double   string              `xml:"double"`
-	Boolean  string              `xml:"boolean"`
-	DateTime string              `xml:"dateTime.iso8601"`
-	Base64   string              `xml:"base64"`
+func (d *StdDecoder) DecodeRaw(body []byte, v interface{}) error {
 
-	Raw string `xml:",innerxml"` // the value can be default string
-}
-
-type respStructMember struct {
-	Name  string    `xml:"name"`
-	Value respValue `xml:"value"`
-}
-
-type respFault struct {
-	Value respValue `xml:"value"`
-}
-
-func DecodeResponse(body []byte, v interface{}) error {
-
-	wrapper, err := toRespWrapper(body)
+	response, err := NewResponse(body)
 	if err != nil {
 		return err
 	}
 
-	if wrapper.Fault != nil {
-		return decodeFault(wrapper.Fault)
+	if response.Fault != nil {
+		return d.decodeFault(response.Fault)
 	}
 
-	return decodeWrapper(wrapper, v)
+	return d.Decode(response, v)
 }
 
-func toRespWrapper(body []byte) (*respWrapper, error) {
-	wrapper := &respWrapper{}
-	if err := xml.Unmarshal(body, wrapper); err != nil {
-		return nil, err
-	}
-
-	return wrapper, nil
-}
-
-func decodeWrapper(wrapper *respWrapper, v interface{}) error {
+func (d *StdDecoder) Decode(response *Response, v interface{}) error {
 
 	// Validate that v has same number of public fields as response params
-	if err := fieldsMustEqual(v, len(wrapper.Params)); err != nil {
+	if err := fieldsMustEqual(v, len(response.Params)); err != nil {
 		return err
 	}
 
 	vElem := reflect.Indirect(reflect.ValueOf(v))
-	for i, param := range wrapper.Params {
+	for i, param := range response.Params {
 		field := vElem.Field(i)
 
-		if err := decodeValue(&param.Value, &field); err != nil {
+		if err := d.decodeValue(&param.Value, &field); err != nil {
 			return err
 		}
 	}
@@ -88,7 +56,16 @@ func decodeWrapper(wrapper *respWrapper, v interface{}) error {
 	return nil
 }
 
-func decodeFault(fault *respFault) *Fault {
+func (d *StdDecoder) DecodeFault(response *Response) *Fault {
+
+	if response.Fault == nil {
+		return nil
+	}
+
+	return d.decodeFault(response.Fault)
+}
+
+func (d *StdDecoder) decodeFault(fault *ResponseFault) *Fault {
 
 	f := &Fault{}
 	for _, m := range fault.Value.Struct {
@@ -107,7 +84,7 @@ func decodeFault(fault *respFault) *Fault {
 	return f
 }
 
-func decodeValue(value *respValue, field *reflect.Value) error {
+func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) error {
 
 	var val interface{}
 	var err error
@@ -124,16 +101,16 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 		val, err = strconv.ParseFloat(value.Double, 64)
 
 	case value.Boolean != "":
-		val, err = decodeBoolean(value.Boolean)
+		val, err = d.decodeBoolean(value.Boolean)
 
 	case value.String != "":
 		val, err = value.String, nil
 
 	case value.Base64 != "":
-		val, err = decodeBase64(value.Base64)
+		val, err = d.decodeBase64(value.Base64)
 
 	case value.DateTime != "":
-		val, err = decodeDateTime(value.DateTime)
+		val, err = d.decodeDateTime(value.DateTime)
 
 	// Array decoding
 	case len(value.Array) > 0:
@@ -145,7 +122,7 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 		slice := reflect.MakeSlice(reflect.TypeOf(field.Interface()), len(value.Array), len(value.Array))
 		for i, v := range value.Array {
 			item := slice.Index(i)
-			if err := decodeValue(v, &item); err != nil {
+			if err := d.decodeValue(v, &item); err != nil {
 				return fmt.Errorf("failed decoding array item at index %d: %w", i, err)
 			}
 		}
@@ -168,7 +145,7 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 				return fmt.Errorf("cannot find field '%s' on struct", fName)
 			}
 
-			if err := decodeValue(&m.Value, &f); err != nil {
+			if err := d.decodeValue(&m.Value, &f); err != nil {
 				return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
 			}
 		}
@@ -188,7 +165,7 @@ func decodeValue(value *respValue, field *reflect.Value) error {
 	return nil
 }
 
-func decodeBoolean(value string) (bool, error) {
+func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
 
 	switch value {
 	case "1", "true", "TRUE", "True":
@@ -199,12 +176,12 @@ func decodeBoolean(value string) (bool, error) {
 	return false, fmt.Errorf("unrecognized value '%s' for boolean", value)
 }
 
-func decodeBase64(value string) ([]byte, error) {
+func (d *StdDecoder) decodeBase64(value string) ([]byte, error) {
 
 	return base64.StdEncoding.DecodeString(value)
 }
 
-func decodeDateTime(value string) (time.Time, error) {
+func (d *StdDecoder) decodeDateTime(value string) (time.Time, error) {
 
 	return time.Parse(time.RFC3339, value)
 }
