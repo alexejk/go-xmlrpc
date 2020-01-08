@@ -1,3 +1,10 @@
+## 0.1.1
+
+Mainly documentation and internal refactoring:
+
+* Made `Encoder` and `Decoder` into interfaces with corresponding `StdEncoder` / `StdDecoder`.
+* Removal of intermediate objects in `Codec`
+
 ## 0.1.0
 
 Initial release version of XML-RPC client.
