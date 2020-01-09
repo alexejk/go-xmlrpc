@@ -118,7 +118,89 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 
 			dec := &StdDecoder{}
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
-			assert.Equal(t, tt.err, err)
+
+			if tt.err == nil {
+				assert.NoError(t, err)
+				assert.EqualValues(t, tt.expect, tt.v)
+			} else {
+				assert.Error(t, err)
+				assert.Equal(t, tt.err, err)
+			}
+		})
+	}
+}
+
+func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
+
+	type StrAlias string
+	type IntAlias int
+
+	tests := []struct {
+		name     string
+		testFile string
+		v        interface{}
+		expect   interface{}
+		err      error
+	}{
+		{
+			name:     "struct convertible string alias",
+			testFile: "response_struct.xml",
+			v: &struct {
+				Struct struct {
+					Foo          StrAlias
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{},
+			expect: &struct {
+				Struct struct {
+					Foo          StrAlias
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{
+				Struct: struct {
+					Foo          StrAlias
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}{
+					Foo:          "bar",
+					Baz:          2,
+					WoBleBobble:  true,
+					WoBleBobble2: 34,
+				},
+			},
+		},
+		{
+			name:     "struct non-convertible type",
+			testFile: "response_struct.xml",
+			v: &struct {
+				Struct struct {
+					Foo          IntAlias
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{},
+			err: errors.New("type 'xmlrpc.IntAlias' cannot be assigned a value of type 'string'"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			dec := &StdDecoder{}
+			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
+			if tt.err == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Equal(t, tt.err, errors.Unwrap(err))
+			}
+
 			if tt.err == nil {
 				assert.EqualValues(t, tt.expect, tt.v)
 			}

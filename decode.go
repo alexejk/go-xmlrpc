@@ -161,7 +161,20 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) err
 	}
 
 	if val != nil {
-		field.Set(reflect.ValueOf(val))
+
+		// Assign if directly assignable, or convert to type if convertible
+		rVal := reflect.ValueOf(val)
+		if rVal.Type().AssignableTo(field.Type()) {
+			field.Set(rVal)
+		} else {
+			if !rVal.Type().ConvertibleTo(field.Type()) {
+
+				return fmt.Errorf("type '%s' cannot be assigned a value of type '%s'", field.Type().String(), rVal.Type().String())
+			}
+
+			field.Set(rVal.Convert(field.Type()))
+		}
+
 	}
 
 	return nil
