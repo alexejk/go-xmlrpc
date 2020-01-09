@@ -131,6 +131,8 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) err
 
 	// Struct decoding
 	case len(value.Struct) != 0:
+
+		// TODO: Support following *Ptr
 		if field.Kind() != reflect.Struct {
 			return fmt.Errorf(errFormatInvalidFieldType, reflect.Struct.String(), field.Kind().String())
 		}
@@ -138,7 +140,7 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) err
 		for _, m := range value.Struct {
 
 			// Upper-case the name
-			fName := strings.Title(m.Name)
+			fName := structMemberToFieldName(m.Name)
 			f := field.FieldByName(fName)
 
 			if !f.IsValid() {
@@ -201,4 +203,35 @@ func fieldsMustEqual(v interface{}, expectation int) error {
 	}
 
 	return nil
+}
+
+func structMemberToFieldName(structName string) string {
+
+	b := new(strings.Builder)
+	capNext := true
+	for _, v := range structName {
+
+		if v >= 'A' && v <= 'Z' {
+			b.WriteRune(v)
+		}
+		if v >= '0' && v <= '9' {
+			b.WriteRune(v)
+		}
+
+		if v >= 'a' && v <= 'z' {
+			if capNext {
+				b.WriteString(strings.ToUpper(string(v)))
+			} else {
+				b.WriteRune(v)
+			}
+		}
+
+		if v == '_' || v == ' ' || v == '-' || v == '.' {
+			capNext = true
+		} else {
+			capNext = false
+		}
+	}
+
+	return b.String()
 }

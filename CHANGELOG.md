@@ -1,3 +1,8 @@
+## 0.1.2
+
+Improvements to parsing logic for responses:
+* If response struct members are in snake-case - Go struct should have member in camel-case
+
 ## 0.1.1
 
 Mainly documentation and internal refactoring:

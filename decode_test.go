@@ -194,6 +194,39 @@ func Test_fieldsMustEqual(t *testing.T) {
 	}
 }
 
+func Test_structMemberToFieldName(t *testing.T) {
+
+	tests := []struct {
+		name   string
+		input  string
+		expect string
+	}{
+		{
+			name:   "lower-camel-case",
+			input:  "myField",
+			expect: "MyField",
+		},
+		{
+			name:   "lower-snake-case",
+			input:  "my_field",
+			expect: "MyField",
+		},
+		{
+			name:   "upper-snake-case",
+			input:  "my_Field",
+			expect: "MyField",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			r := structMemberToFieldName(tt.input)
+			assert.Equal(t, tt.expect, r)
+		})
+	}
+}
+
 func loadTestFile(t *testing.T, name string) []byte {
 
 	path := filepath.Join("testdata", name) // relative path
