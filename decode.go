@@ -48,7 +48,7 @@ func (d *StdDecoder) Decode(response *Response, v interface{}) error {
 	for i, param := range response.Params {
 		field := vElem.Field(i)
 
-		if err := d.decodeValue(&param.Value, &field); err != nil {
+		if err := d.decodeValue(&param.Value, field); err != nil {
 			return err
 		}
 	}
@@ -84,7 +84,9 @@ func (d *StdDecoder) decodeFault(fault *ResponseFault) *Fault {
 	return f
 }
 
-func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) error {
+func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) error {
+
+	field = indirect(field)
 
 	var val interface{}
 	var err error
@@ -122,7 +124,7 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) err
 		slice := reflect.MakeSlice(reflect.TypeOf(field.Interface()), len(value.Array), len(value.Array))
 		for i, v := range value.Array {
 			item := slice.Index(i)
-			if err := d.decodeValue(v, &item); err != nil {
+			if err := d.decodeValue(v, item); err != nil {
 				return fmt.Errorf("failed decoding array item at index %d: %w", i, err)
 			}
 		}
@@ -132,7 +134,6 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) err
 	// Struct decoding
 	case len(value.Struct) != 0:
 
-		// TODO: Support following *Ptr
 		if field.Kind() != reflect.Struct {
 			return fmt.Errorf(errFormatInvalidFieldType, reflect.Struct.String(), field.Kind().String())
 		}
@@ -147,7 +148,7 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field *reflect.Value) err
 				return fmt.Errorf("cannot find field '%s' on struct", fName)
 			}
 
-			if err := d.decodeValue(&m.Value, &f); err != nil {
+			if err := d.decodeValue(&m.Value, f); err != nil {
 				return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
 			}
 		}
@@ -247,4 +248,64 @@ func structMemberToFieldName(structName string) string {
 	}
 
 	return b.String()
+}
+
+// indirect walks down v allocating pointers as needed,
+// until it gets to a non-pointer.
+//
+// Adapted from encoding/json indirect() function
+// https://golang.org/src/encoding/json/decode.go?#L480
+func indirect(v reflect.Value) reflect.Value {
+
+	// After the first round-trip, we set v back to the original value to
+	// preserve the original RW flags contained in reflect.Value.
+	v0 := v
+	haveAddr := false
+
+	// If v is a named type and is addressable,
+	// start with its address, so that if the type has pointer methods,
+	// we find them.
+	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
+		haveAddr = true
+		v = v.Addr()
+	}
+
+	for {
+
+		// Load value from interface, but only if the result will be
+		// usefully addressable.
+		if v.Kind() == reflect.Interface && !v.IsNil() {
+			e := v.Elem()
+			if e.Kind() == reflect.Ptr && !e.IsNil() {
+				haveAddr = false
+				v = e
+				continue
+			}
+		}
+
+		if v.Kind() != reflect.Ptr {
+			break
+		}
+
+		// Prevent infinite loop if v is an interface pointing to its own address:
+		//     var v interface{}
+		//     v = &v
+		if v.Elem().Kind() == reflect.Interface && v.Elem().Elem() == v {
+			v = v.Elem()
+			break
+		}
+
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+
+		if haveAddr {
+			v = v0 // restore original value after round-trip Value.Addr().Elem()
+			haveAddr = false
+		} else {
+			v = v.Elem()
+		}
+	}
+
+	return v
 }

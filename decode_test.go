@@ -135,6 +135,13 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 	type StrAlias string
 	type IntAlias int
 
+	sPtr := func(v string) *string {
+		return &v
+	}
+	iPtr := func(v int) *int {
+		return &v
+	}
+
 	tests := []struct {
 		name     string
 		testFile string
@@ -171,6 +178,38 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: 34,
+				},
+			},
+		},
+		{
+			name:     "struct pointer",
+			testFile: "response_struct.xml",
+			v: &struct {
+				Struct *struct {
+					Foo          *string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 *int
+				}
+			}{},
+			expect: &struct {
+				Struct *struct {
+					Foo          *string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 *int
+				}
+			}{
+				Struct: &struct {
+					Foo          *string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 *int
+				}{
+					Foo:          sPtr("bar"),
+					Baz:          2,
+					WoBleBobble:  true,
+					WoBleBobble2: iPtr(34),
 				},
 			},
 		},

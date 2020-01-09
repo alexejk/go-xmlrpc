@@ -33,7 +33,7 @@ func TestClient_Call(t *testing.T) {
 		assert.Equal(t, "12345", m.Params[0].Value.Int)
 
 		file := nameParts[1]
-		fmt.Fprintln(w, string(loadTestFile(t, fmt.Sprintf("response_%s.xml", file))))
+		_, _ = fmt.Fprintln(w, string(loadTestFile(t, fmt.Sprintf("response_%s.xml", file))))
 	}))
 	defer ts.Close()
 
@@ -60,7 +60,7 @@ func TestClient_Call(t *testing.T) {
 func TestClient_Fault(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, string(loadTestFile(t, "response_fault.xml")))
+		_, _ = fmt.Fprint(w, string(loadTestFile(t, "response_fault.xml")))
 	}))
 	defer ts.Close()
 
@@ -76,6 +76,10 @@ func TestClient_Fault(t *testing.T) {
 }
 
 func TestClient_Bugzilla(t *testing.T) {
+
+	if testing.Short() {
+		t.Skip("skipping making remote call in tests")
+	}
 
 	c, err := NewClient("https://bugzilla.mozilla.org/xmlrpc.cgi")
 	assert.NoError(t, err)

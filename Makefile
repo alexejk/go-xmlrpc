@@ -23,7 +23,7 @@ lint:
 .PHONY: test
 test:
 	@echo "Running tests..."
-	@go test ./...
+	@go test -short ./...
 
 #--------------------------------
 # Build steps
