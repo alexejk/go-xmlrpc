@@ -2,6 +2,7 @@
 
 Improvements to parsing logic for responses:
 * If response struct members are in snake-case - Go struct should have member in camel-case
+* It is now possible to use type aliases when decoding a response (#1)
 
 ## 0.1.1
 
