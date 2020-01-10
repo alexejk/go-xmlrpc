@@ -55,3 +55,8 @@ Response is decoded following similar rules to argument encoding.
 * Order of fields is important.
 * Outer struct should contain exported field for each response parameter.
 * Structs may contain pointers - they will be initialized if required.
+
+## Building
+
+To build this project, simply run `make all`. 
+If you prefer building in Docker instead - `make build-in-docker` is your friend.
