@@ -1,3 +1,9 @@
+## 0.1.3 (WIP)
+
+Improvements:
+
+* User-Agent can now be configured on the Client (#6)
+
 ## 0.1.2
 
 Improvements to parsing logic for responses:

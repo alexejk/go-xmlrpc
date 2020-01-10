@@ -57,6 +57,60 @@ func TestClient_Call(t *testing.T) {
 	assert.Equal(t, 12345, resp.Index)
 }
 
+func TestClient_SetUserAgent(t *testing.T) {
+	tests := []struct {
+		name    string
+		skipSet bool
+		agent   string
+		expect  string
+	}{
+		{
+			name:    "default user-agent",
+			skipSet: true,
+			expect:  defaultUserAgent,
+		},
+		{
+			name:   "new user-agent",
+			agent:  "my-new-agent/1.2.3",
+			expect: "my-new-agent/1.2.3",
+		},
+		{
+			name:   "empty user-agent",
+			agent:  "",
+			expect: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			serverCalled := false
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+				ua := r.UserAgent()
+
+				assert.Equal(t, tt.expect, ua)
+
+				serverCalled = true
+				_, _ = fmt.Fprintln(w, string(loadTestFile(t, "response_simple.xml")))
+			}))
+			defer ts.Close()
+
+			c, err := NewClient(ts.URL)
+			assert.NoError(t, err)
+
+			if !tt.skipSet {
+				c.SetUserAgent(tt.agent)
+			}
+			assert.Equal(t, tt.expect, c.UserAgent())
+			err = c.Call("test.Method", nil, nil)
+			assert.NoError(t, err)
+
+			assert.True(t, serverCalled, "server must be called")
+		})
+	}
+}
+
 func TestClient_Fault(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
