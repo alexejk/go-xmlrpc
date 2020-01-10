@@ -3,9 +3,13 @@
 This is an implementation of client-side part of XML-RPC protocol in Go.
 
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/alexejk/go-xmlrpc/Build)
-[![GoDoc](https://godoc.org/alexejk.io/go-xmlrpc?status.svg)](https://godoc.org/alexejk.io/go-xmlrpc)
 [![codecov](https://codecov.io/gh/alexejk/go-xmlrpc/branch/master/graph/badge.svg)](https://codecov.io/gh/alexejk/go-xmlrpc)
+
+[![GoDoc](https://godoc.org/alexejk.io/go-xmlrpc?status.svg)](https://godoc.org/alexejk.io/go-xmlrpc)
+![GitHub](https://img.shields.io/github/license/alexejk/go-xmlrpc)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/alexejk/go-xmlrpc)
+
+
 ## Usage
 
 Add dependency to your project:

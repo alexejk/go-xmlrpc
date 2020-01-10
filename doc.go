@@ -1,5 +1,5 @@
 /*
-This package includes everything that is required to perform XML-RPC requests by utilizing familiar rpc.Client interface.
+Package xmlrpc includes everything that is required to perform XML-RPC requests by utilizing familiar rpc.Client interface.
 
 The simplest use-case is creating a client towards an endpoint and making calls:
 
