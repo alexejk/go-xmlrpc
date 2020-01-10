@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+const defaultUserAgent = "alexejk.io/go-xmlrpc"
+
 // Codec implements methods required by rpc.ClientCodec
 // In this implementation Codec is the one performing actual RPC requests with http.Client.
 type Codec struct {
@@ -28,6 +30,8 @@ type Codec struct {
 
 	// presents completed requests by sequence ID
 	ready chan uint64
+
+	userAgent string
 }
 
 type rpcCall struct {
@@ -49,6 +53,8 @@ func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 		pending:  make(map[uint64]*rpcCall),
 		response: nil,
 		ready:    make(chan uint64),
+
+		userAgent: defaultUserAgent,
 	}
 }
 
@@ -66,8 +72,8 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 	}
 
 	httpRequest.Header.Set("Content-Type", "text/xml")
-	httpRequest.Header.Set("User-Agent", "alexejk.io/go-xmlrpc")
 	httpRequest.Header.Set("Content-Length", fmt.Sprintf("%d", bodyBuffer.Len()))
+	httpRequest.Header.Set("User-Agent", c.userAgent)
 
 	httpResponse, err := c.httpClient.Do(httpRequest)
 	if err != nil {

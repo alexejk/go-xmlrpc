@@ -10,6 +10,7 @@ import (
 // Client is responsible for making calls to RPC services with help of underlying rpc.Client.
 type Client struct {
 	*rpc.Client
+	codec *Codec
 }
 
 // NewClient creates a Client with http.DefaultClient.
@@ -32,8 +33,20 @@ func NewClientWithHttpClient(endpoint string, httpClient *http.Client) (*Client,
 	codec := NewCodec(endpointUrl, httpClient)
 
 	c := &Client{
+		codec:  codec,
 		Client: rpc.NewClientWithCodec(codec),
 	}
 
 	return c, nil
+}
+
+// UserAgent returns currently configured User-Agent header that will be sent to remote server on every RPC call.
+func (c *Client) UserAgent() string {
+	return c.codec.userAgent
+}
+
+// SetUserAgent allows customization to User-Agent header.
+// If set to an empty string, User-Agent header will be sent with an empty value.
+func (c *Client) SetUserAgent(ua string) {
+	c.codec.userAgent = ua
 }
