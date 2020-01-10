@@ -2,6 +2,7 @@
 
 This is an implementation of client-side part of XML-RPC protocol in Go.
 
+[![GoDoc](https://godoc.org/alexejk.io/go-xmlrpc?status.svg)](https://godoc.org/alexejk.io/go-xmlrpc)
 [![codecov](https://codecov.io/gh/alexejk/go-xmlrpc/branch/master/graph/badge.svg)](https://codecov.io/gh/alexejk/go-xmlrpc)
 
 ## Usage
