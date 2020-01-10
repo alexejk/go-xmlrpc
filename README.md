@@ -2,6 +2,8 @@
 
 This is an implementation of client-side part of XML-RPC protocol in Go.
 
+[![codecov](https://codecov.io/gh/alexejk/go-xmlrpc/branch/master/graph/badge.svg)](https://codecov.io/gh/alexejk/go-xmlrpc)
+
 ## Usage
 
 Add dependency to your project:
@@ -36,7 +38,7 @@ func main() {
 ```
 
 If you want to customize any aspect of `http.Client` used to perform requests, use `NewClientWithHttpClient` instead.
-By defailt, an `http.DefaultClient` is used.
+By default `http.DefaultClient` will be used.
 
 ### Argument encoding
 
@@ -52,3 +54,4 @@ Response is decoded following similar rules to argument encoding.
 
 * Order of fields is important.
 * Outer struct should contain exported field for each response parameter.
+* Structs may contain pointers - they will be initialized if required.
