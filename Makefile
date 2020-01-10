@@ -21,9 +21,9 @@ lint:
 	@go vet ./...
 
 .PHONY: test
-test:
+test: pre-build
 	@echo "Running tests..."
-	@go test -short ./...
+	@go test -short -coverprofile=build/coverage.txt -covermode=atomic ./...
 
 #--------------------------------
 # Build steps
@@ -49,6 +49,14 @@ docker:
 
 .PHONY: build-in-docker
 build-in-docker: docker
+# Force-stop any containers with this name
+	docker rm -f $(BINARY_NAME) || true
+# Create a new container with newly built image (but don't run it)
+	docker create --name $(BINARY_NAME) $(BINARY_NAME)
+# Copy over the binary to disk (from container)
+	docker cp '$(BINARY_NAME):/opt/' $(BUILD_DIR)
+# House-keeping: removing container
+	docker rm -f $(BINARY_NAME)
 
 #--------------------------------
 # Cleanup steps
