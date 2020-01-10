@@ -151,7 +151,7 @@ func (c *Codec) ReadResponseBody(v interface{}) error {
 
 func (c *Codec) Close() error {
 
-	// TODO: Handle this
+	c.httpClient.CloseIdleConnections()
 
 	return nil
 }
