@@ -19,3 +19,10 @@ jobs:
       - name: Build project
         run: |
           make build-in-docker
+
+      - name: Code coverage
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./build/coverage.txt
+          yml: ./codecov.yaml
