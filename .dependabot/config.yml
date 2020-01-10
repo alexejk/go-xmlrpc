@@ -5,5 +5,5 @@ update_configs:
     update_schedule: "live"
 
   - package_manager: "docker"
-      directory: "/"
-      update_schedule: "weekly"
+    directory: "/"
+    update_schedule: "weekly"
