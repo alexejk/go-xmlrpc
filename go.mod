@@ -1,4 +1,4 @@
-module alexejk.io/go-xmlrpc
+module github.com/Nightapes/go-xmlrpc
 
 go 1.13
 
