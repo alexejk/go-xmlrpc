@@ -44,7 +44,7 @@ func main() {
 }
 ```
 
-If you want to customize any aspect of `http.Client` used to perform requests, use `NewClientWithHttpClient` instead.
+If you want to customize any aspect of `http.Client` used to perform requests or add custom headers, use `NewCustomClient` instead.
 By default `http.DefaultClient` will be used.
 
 ### Argument encoding

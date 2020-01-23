@@ -18,6 +18,7 @@ const defaultUserAgent = "alexejk.io/go-xmlrpc"
 type Codec struct {
 	endpoint   *url.URL
 	httpClient *http.Client
+	customHeaders map[string]string
 
 	mutex sync.Mutex
 	// contains completed but not processed responses by sequence ID
@@ -42,11 +43,11 @@ type rpcCall struct {
 
 // NewCodec creates a new Codec bound to provided endpoint.
 // Provided client will be used to perform RPC requests.
-func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
+func NewCodec(endpoint *url.URL, httpClient *http.Client, customHeaders map[string]string) *Codec {
 	return &Codec{
 		endpoint:   endpoint,
 		httpClient: httpClient,
-
+		customHeaders: customHeaders,
 		encoder: &StdEncoder{},
 		decoder: &StdDecoder{},
 
@@ -69,6 +70,10 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 	httpRequest, err := http.NewRequest("POST", c.endpoint.String(), bodyBuffer)
 	if err != nil {
 		return err
+	}
+
+	for key, value := range c.customHeaders {
+		httpRequest.Header.Set(key, value)
 	}
 
 	httpRequest.Header.Set("Content-Type", "text/xml")

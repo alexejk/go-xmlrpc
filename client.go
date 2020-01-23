@@ -17,12 +17,12 @@ type Client struct {
 // If provided endpoint is not valid, an error is returned.
 func NewClient(endpoint string) (*Client, error) {
 
-	return NewClientWithHttpClient(endpoint, http.DefaultClient)
+	return NewCustomClient(endpoint, http.DefaultClient, make(map[string]string))
 }
 
-// NewClientWithHttpClient allows customization of http.Client used to make RPC calls.
+// NewCustomClient allows customization of http.Client and headers used to make RPC calls.
 // If provided endpoint is not valid, an error is returned.
-func NewClientWithHttpClient(endpoint string, httpClient *http.Client) (*Client, error) {
+func NewCustomClient(endpoint string, httpClient *http.Client, headers map[string]string) (*Client, error) {
 
 	// Parse Endpoint URL
 	endpointUrl, err := url.Parse(endpoint)
@@ -30,7 +30,7 @@ func NewClientWithHttpClient(endpoint string, httpClient *http.Client) (*Client,
 		return nil, fmt.Errorf("invalid endpoint url: %w", err)
 	}
 
-	codec := NewCodec(endpointUrl, httpClient)
+	codec := NewCodec(endpointUrl, httpClient, headers)
 
 	c := &Client{
 		codec:  codec,
