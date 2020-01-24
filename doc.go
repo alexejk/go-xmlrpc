@@ -15,5 +15,8 @@ The simplest use-case is creating a client towards an endpoint and making calls:
 	err = c.Call("Bugzilla.version", nil, resp)
 	fmt.Printf("Version: %s\n", resp.BugzillaVersion.Version)
 
+
+Additional customizations, such as setting custom headers, changing User-Agent or modifying HTTP Client used to make calls,
+pass corresponding Options to NewClient function.
 */
 package xmlrpc

@@ -44,8 +44,11 @@ func main() {
 }
 ```
 
-If you want to customize any aspect of `http.Client` used to perform requests or add custom headers, use `NewCustomClient` instead.
-By default `http.DefaultClient` will be used.
+Customization is supported by passing a list of `Option` to the `NewClient` function. 
+For instance:
+
+ - To customize any aspect of `http.Client` used to perform requests, use `HttpClient` option, otherwise `http.DefaultClient` will be used
+ - To pass custom headers, make use of `Headers` option.
 
 ### Argument encoding
 

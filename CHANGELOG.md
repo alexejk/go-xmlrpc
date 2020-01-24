@@ -1,8 +1,20 @@
-## 0.1.3 (WIP)
+## 0.2.x
+
+## 0.2.0
 
 Improvements:
 
-* User-Agent can now be configured on the Client (#6)
+* `NewClient` supports receiving a list of `Option`s that modify clients behavior.  
+Initial supported options are:
+
+  * `HttpClient(*http.Client)` - set custom `http.Client` to be used
+  * `Headers(map[string]string)` - set custom headers to use in every request (kudos: @Nightapes)
+  * `UserAgent(string)` - set User-Agent identification to be used (#6). This is a shortcut for just setting `User-Agent` custom header
+
+Deprecations:
+
+* `NewCustomClient` is deprecated in favor of `NewClient(string, ...Option)` with `HttpClient(*http.Client)` option. 
+This method will be removed in future versions.
 
 ## 0.1.2
 
