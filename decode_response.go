@@ -21,10 +21,13 @@ func NewResponse(body []byte) (*Response, error) {
 	return response, nil
 }
 
+// ResponseParam encapsulates a nested parameter value
 type ResponseParam struct {
 	Value ResponseValue `xml:"value"`
 }
 
+// ResponseValue encapsulates one of the data types for each parameter.
+// Only one field should be set.
 type ResponseValue struct {
 	Array    []*ResponseValue        `xml:"array>data>value"`
 	Struct   []*ResponseStructMember `xml:"struct>member"`
@@ -37,11 +40,13 @@ type ResponseValue struct {
 	Base64   string                  `xml:"base64"`
 }
 
+// ResponseStructMember contains name-value pair of the struct
 type ResponseStructMember struct {
 	Name  string        `xml:"name"`
 	Value ResponseValue `xml:"value"`
 }
 
+// ResponseFault wraps around failure
 type ResponseFault struct {
 	Value ResponseValue `xml:"value"`
 }

@@ -16,8 +16,9 @@ const defaultUserAgent = "alexejk.io/go-xmlrpc"
 // Codec implements methods required by rpc.ClientCodec
 // In this implementation Codec is the one performing actual RPC requests with http.Client.
 type Codec struct {
-	endpoint   *url.URL
-	httpClient *http.Client
+	endpoint      *url.URL
+	httpClient    *http.Client
+	customHeaders map[string]string
 
 	mutex sync.Mutex
 	// contains completed but not processed responses by sequence ID
@@ -46,9 +47,8 @@ func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 	return &Codec{
 		endpoint:   endpoint,
 		httpClient: httpClient,
-
-		encoder: &StdEncoder{},
-		decoder: &StdDecoder{},
+		encoder:    &StdEncoder{},
+		decoder:    &StdDecoder{},
 
 		pending:  make(map[uint64]*rpcCall),
 		response: nil,
@@ -72,8 +72,14 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 	}
 
 	httpRequest.Header.Set("Content-Type", "text/xml")
-	httpRequest.Header.Set("Content-Length", fmt.Sprintf("%d", bodyBuffer.Len()))
 	httpRequest.Header.Set("User-Agent", c.userAgent)
+
+	// Apply customer headers if set, this allows overwriting static default headers
+	for key, value := range c.customHeaders {
+		httpRequest.Header.Set(key, value)
+	}
+
+	httpRequest.Header.Set("Content-Length", fmt.Sprintf("%d", bodyBuffer.Len()))
 
 	httpResponse, err := c.httpClient.Do(httpRequest)
 	if err != nil {
