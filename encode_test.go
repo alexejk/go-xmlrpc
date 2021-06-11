@@ -122,7 +122,6 @@ func TestStdEncoder_Encode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
 			err := enc.Encode(buf, tt.methodName, tt.args)
@@ -175,7 +174,6 @@ func TestStdEncoder_isByteArray(t *testing.T) {
 }
 
 func Test_encodeArray(t *testing.T) {
-
 	ptr := func(v string) *string {
 		return &v
 	}
@@ -204,10 +202,10 @@ func Test_encodeArray(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
 			err := enc.encodeArray(buf, tt.input)
+
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})
@@ -215,7 +213,6 @@ func Test_encodeArray(t *testing.T) {
 }
 
 func Test_encodeBase64(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		input  []byte
@@ -240,10 +237,10 @@ func Test_encodeBase64(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
 			err := enc.encodeBase64(buf, tt.input)
+
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})
@@ -312,10 +309,10 @@ func Test_encodeStruct(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
 			err := enc.encodeStruct(buf, tt.input)
+
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})
@@ -323,7 +320,6 @@ func Test_encodeStruct(t *testing.T) {
 }
 
 func Test_encodeTime(t *testing.T) {
-
 	loc := func(name string) *time.Location {
 		l, err := time.LoadLocation(name)
 		if err != nil {
@@ -363,10 +359,10 @@ func Test_encodeTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
 			err := enc.encodeTime(buf, tt.input)
+
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.expect, buf.String())
 		})

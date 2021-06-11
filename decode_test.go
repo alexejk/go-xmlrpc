@@ -115,7 +115,6 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			dec := &StdDecoder{}
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
 
@@ -131,7 +130,6 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 }
 
 func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
-
 	type StrAlias string
 	type IntAlias int
 
@@ -230,7 +228,6 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			dec := &StdDecoder{}
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
 			if tt.err == nil {
@@ -308,7 +305,6 @@ func Test_fieldsMustEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			err := fieldsMustEqual(tt.input, tt.expect)
 			assert.Equal(t, tt.err, err)
 		})
@@ -316,7 +312,6 @@ func Test_fieldsMustEqual(t *testing.T) {
 }
 
 func Test_structMemberToFieldName(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		input  string
@@ -341,7 +336,6 @@ func Test_structMemberToFieldName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			r := structMemberToFieldName(tt.input)
 			assert.Equal(t, tt.expect, r)
 		})
@@ -349,11 +343,12 @@ func Test_structMemberToFieldName(t *testing.T) {
 }
 
 func loadTestFile(t *testing.T, name string) []byte {
-
 	path := filepath.Join("testdata", name) // relative path
+
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return bytes
 }

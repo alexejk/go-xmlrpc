@@ -24,9 +24,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestClient_Call(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		m := &struct {
 			Name   string           `xml:"methodName"`
 			Params []*ResponseParam `xml:"params>param"`
@@ -69,7 +67,6 @@ func TestClient_Call(t *testing.T) {
 }
 
 func TestClient_Fault(t *testing.T) {
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, string(loadTestFile(t, "response_fault.xml")))
 	}))
@@ -87,7 +84,6 @@ func TestClient_Fault(t *testing.T) {
 }
 
 func TestClient_Bugzilla(t *testing.T) {
-
 	if testing.Short() {
 		t.Skip("skipping making remote call in tests")
 	}

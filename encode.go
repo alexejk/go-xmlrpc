@@ -32,15 +32,14 @@ func (e *StdEncoder) Encode(w io.Writer, methodName string, args interface{}) er
 }
 
 func (e *StdEncoder) encodeArgs(w io.Writer, args interface{}) error {
-
 	// Allows reading both pointer and value-structs
 	elem := reflect.Indirect(reflect.ValueOf(args))
 	numFields := elem.NumField()
+
 	if numFields > 0 {
-
 		hasExportedFields := false
-		for fN := 0; fN < numFields; fN++ {
 
+		for fN := 0; fN < numFields; fN++ {
 			field := elem.Field(fN)
 			if !field.CanInterface() {
 				continue
@@ -74,7 +73,6 @@ func (e *StdEncoder) encodeArgs(w io.Writer, args interface{}) error {
 //
 // See more: https://en.wikipedia.org/wiki/XML-RPC#Data_types
 func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
-
 	valueOf := reflect.ValueOf(value)
 	kind := valueOf.Kind()
 
@@ -89,7 +87,6 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 
 	_, _ = fmt.Fprint(w, "<value>")
 	switch kind {
-
 	case reflect.Bool:
 		if err := e.encodeBoolean(w, value.(bool)); err != nil {
 			return fmt.Errorf("cannot encode boolean value: %w", err)
@@ -132,6 +129,9 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 				return fmt.Errorf("cannot encode time.Time value: %w", err)
 			}
 		}
+
+	default:
+		return fmt.Errorf("unsupported type %v", kind)
 	}
 
 	_, _ = fmt.Fprint(w, "</value>")
@@ -139,25 +139,21 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 }
 
 func (e *StdEncoder) isByteArray(val interface{}) bool {
-
 	_, ok := val.([]byte)
 	return ok
 }
 
 func (e *StdEncoder) encodeInteger(w io.Writer, val int) error {
-
 	_, err := fmt.Fprintf(w, "<int>%d</int>", val)
 	return err
 }
 
 func (e *StdEncoder) encodeDouble(w io.Writer, val float64) error {
-
 	_, err := fmt.Fprintf(w, "<double>%f</double>", val)
 	return err
 }
 
 func (e *StdEncoder) encodeBoolean(w io.Writer, val bool) error {
-
 	v := 0
 	if val {
 		v = 1
@@ -168,7 +164,6 @@ func (e *StdEncoder) encodeBoolean(w io.Writer, val bool) error {
 }
 
 func (e *StdEncoder) encodeString(w io.Writer, val string) error {
-
 	_, _ = fmt.Fprint(w, "<string>")
 	if err := xml.EscapeText(w, []byte(val)); err != nil {
 		return fmt.Errorf("failed to escape string: %w", err)
@@ -179,7 +174,6 @@ func (e *StdEncoder) encodeString(w io.Writer, val string) error {
 }
 
 func (e *StdEncoder) encodeArray(w io.Writer, val interface{}) error {
-
 	_, _ = fmt.Fprint(w, "<array><data>")
 	for i := 0; i < reflect.ValueOf(val).Len(); i++ {
 		if err := e.encodeValue(w, reflect.ValueOf(val).Index(i).Interface()); err != nil {
@@ -193,10 +187,9 @@ func (e *StdEncoder) encodeArray(w io.Writer, val interface{}) error {
 }
 
 func (e *StdEncoder) encodeStruct(w io.Writer, val interface{}) error {
-
 	_, _ = fmt.Fprint(w, "<struct>")
-	for i := 0; i < reflect.TypeOf(val).NumField(); i++ {
 
+	for i := 0; i < reflect.TypeOf(val).NumField(); i++ {
 		field := reflect.ValueOf(val).Field(i)
 		// Skip over unexported fields
 		if !field.CanInterface() {
@@ -221,13 +214,11 @@ func (e *StdEncoder) encodeStruct(w io.Writer, val interface{}) error {
 }
 
 func (e *StdEncoder) encodeBase64(w io.Writer, val []byte) error {
-
 	_, err := fmt.Fprintf(w, "<base64>%s</base64>", base64.StdEncoding.EncodeToString(val))
 	return err
 }
 
 func (e *StdEncoder) encodeTime(w io.Writer, val time.Time) error {
-
 	_, err := fmt.Fprintf(w, "<dateTime.iso8601>%s</dateTime.iso8601>", val.Format(time.RFC3339))
 	return err
 }

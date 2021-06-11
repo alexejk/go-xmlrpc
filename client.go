@@ -16,14 +16,13 @@ type Client struct {
 // NewClient creates a Client with http.DefaultClient.
 // If provided endpoint is not valid, an error is returned.
 func NewClient(endpoint string, opts ...Option) (*Client, error) {
-
 	// Parse Endpoint URL
-	endpointUrl, err := url.Parse(endpoint)
+	endpointURL, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid endpoint url: %w", err)
 	}
 
-	codec := NewCodec(endpointUrl, http.DefaultClient)
+	codec := NewCodec(endpointURL, http.DefaultClient)
 
 	c := &Client{
 		codec:  codec,
@@ -42,6 +41,5 @@ func NewClient(endpoint string, opts ...Option) (*Client, error) {
 // If provided endpoint is not valid, an error is returned.
 // Deprecated: prefer using NewClient with HttpClient Option
 func NewCustomClient(endpoint string, httpClient *http.Client) (*Client, error) {
-
 	return NewClient(endpoint, HttpClient(httpClient))
 }

@@ -18,7 +18,7 @@ all: clean lint test build
 .PHONY: lint
 lint:
 	@echo "Linting code..."
-	@go vet ./...
+	@sh hack/linter.sh
 
 .PHONY: test
 test: pre-build

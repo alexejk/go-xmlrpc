@@ -2,6 +2,7 @@ package xmlrpc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -59,14 +60,13 @@ func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 }
 
 func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
-
 	bodyBuffer := new(bytes.Buffer)
 	err := c.encoder.Encode(bodyBuffer, req.ServiceMethod, args)
 	if err != nil {
 		return err
 	}
 
-	httpRequest, err := http.NewRequest("POST", c.endpoint.String(), bodyBuffer)
+	httpRequest, err := http.NewRequestWithContext(context.TODO(), "POST", c.endpoint.String(), bodyBuffer)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 
 	httpRequest.Header.Set("Content-Length", fmt.Sprintf("%d", bodyBuffer.Len()))
 
-	httpResponse, err := c.httpClient.Do(httpRequest)
+	httpResponse, err := c.httpClient.Do(httpRequest) // nolint:bodyclose // Handled in ReadResponseHeader
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,6 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 }
 
 func (c *Codec) ReadResponseHeader(resp *rpc.Response) error {
-
 	seq := <-c.ready
 
 	c.mutex.Lock()
@@ -143,7 +142,6 @@ func (c *Codec) ReadResponseHeader(resp *rpc.Response) error {
 	return nil
 }
 func (c *Codec) ReadResponseBody(v interface{}) error {
-
 	if v == nil {
 		return nil
 	}
@@ -156,8 +154,6 @@ func (c *Codec) ReadResponseBody(v interface{}) error {
 }
 
 func (c *Codec) Close() error {
-
 	c.httpClient.CloseIdleConnections()
-
 	return nil
 }

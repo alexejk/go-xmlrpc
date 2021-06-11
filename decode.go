@@ -24,7 +24,6 @@ type Decoder interface {
 type StdDecoder struct{}
 
 func (d *StdDecoder) DecodeRaw(body []byte, v interface{}) error {
-
 	response, err := NewResponse(body)
 	if err != nil {
 		return err
@@ -38,7 +37,6 @@ func (d *StdDecoder) DecodeRaw(body []byte, v interface{}) error {
 }
 
 func (d *StdDecoder) Decode(response *Response, v interface{}) error {
-
 	// Validate that v has same number of public fields as response params
 	if err := fieldsMustEqual(v, len(response.Params)); err != nil {
 		return err
@@ -57,7 +55,6 @@ func (d *StdDecoder) Decode(response *Response, v interface{}) error {
 }
 
 func (d *StdDecoder) DecodeFault(response *Response) *Fault {
-
 	if response.Fault == nil {
 		return nil
 	}
@@ -66,7 +63,6 @@ func (d *StdDecoder) DecodeFault(response *Response) *Fault {
 }
 
 func (d *StdDecoder) decodeFault(fault *ResponseFault) *Fault {
-
 	f := &Fault{}
 	for _, m := range fault.Value.Struct {
 		switch m.Name {
@@ -85,14 +81,12 @@ func (d *StdDecoder) decodeFault(fault *ResponseFault) *Fault {
 }
 
 func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) error {
-
 	field = indirect(field)
 
 	var val interface{}
 	var err error
 
 	switch {
-
 	case value.Int != "":
 		val, err = strconv.Atoi(value.Int)
 
@@ -139,7 +133,6 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 		}
 
 		for _, m := range value.Struct {
-
 			// Upper-case the name
 			fName := structMemberToFieldName(m.Name)
 			f := field.FieldByName(fName)
@@ -162,27 +155,23 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 	}
 
 	if val != nil {
-
 		// Assign if directly assignable, or convert to type if convertible
 		rVal := reflect.ValueOf(val)
 		if rVal.Type().AssignableTo(field.Type()) {
 			field.Set(rVal)
 		} else {
 			if !rVal.Type().ConvertibleTo(field.Type()) {
-
 				return fmt.Errorf("type '%s' cannot be assigned a value of type '%s'", field.Type().String(), rVal.Type().String())
 			}
 
 			field.Set(rVal.Convert(field.Type()))
 		}
-
 	}
 
 	return nil
 }
 
 func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
-
 	switch value {
 	case "1", "true", "TRUE", "True":
 		return true, nil
@@ -193,19 +182,17 @@ func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
 }
 
 func (d *StdDecoder) decodeBase64(value string) ([]byte, error) {
-
 	return base64.StdEncoding.DecodeString(value)
 }
 
 func (d *StdDecoder) decodeDateTime(value string) (time.Time, error) {
-
 	return time.Parse(time.RFC3339, value)
 }
 
 func fieldsMustEqual(v interface{}, expectation int) error {
-
 	vElem := reflect.Indirect(reflect.ValueOf(v))
 	numFields := 0
+
 	for i := 0; i < vElem.NumField(); i++ {
 		if vElem.Field(i).CanInterface() {
 			numFields++
@@ -220,11 +207,10 @@ func fieldsMustEqual(v interface{}, expectation int) error {
 }
 
 func structMemberToFieldName(structName string) string {
-
 	b := new(strings.Builder)
 	capNext := true
-	for _, v := range structName {
 
+	for _, v := range structName {
 		if v >= 'A' && v <= 'Z' {
 			b.WriteRune(v)
 		}
@@ -256,7 +242,6 @@ func structMemberToFieldName(structName string) string {
 // Adapted from encoding/json indirect() function
 // https://golang.org/src/encoding/json/decode.go?#L480
 func indirect(v reflect.Value) reflect.Value {
-
 	// After the first round-trip, we set v back to the original value to
 	// preserve the original RW flags contained in reflect.Value.
 	v0 := v
@@ -271,7 +256,6 @@ func indirect(v reflect.Value) reflect.Value {
 	}
 
 	for {
-
 		// Load value from interface, but only if the result will be
 		// usefully addressable.
 		if v.Kind() == reflect.Interface && !v.IsNil() {

@@ -77,10 +77,8 @@ func TestClient_Option_Headers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			serverCalled := false
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 				assert.EqualValues(t, tt.expect, r.Header)
 
 				serverCalled = true
@@ -127,10 +125,8 @@ func TestClient_Option_UserAgent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			serverCalled := false
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 				ua := r.UserAgent()
 
 				assert.Equal(t, tt.expect, ua)
@@ -186,10 +182,8 @@ func TestClient_Option_HttpClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			serverCalled := false
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 				serverCalled = true
 				_, _ = fmt.Fprintln(w, string(loadTestFile(t, "response_simple.xml")))
 			}))
