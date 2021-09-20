@@ -11,6 +11,7 @@ import (
 
 const (
 	errFormatInvalidFieldType = "invalid field type: expected '%s', got '%s'"
+	float64BitSize            = 64
 )
 
 // Decoder implementations provide mechanisms for parsing of XML-RPC responses to native data-types.
@@ -94,7 +95,7 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 		val, err = strconv.Atoi(value.Int4)
 
 	case value.Double != "":
-		val, err = strconv.ParseFloat(value.Double, 64)
+		val, err = strconv.ParseFloat(value.Double, float64BitSize)
 
 	case value.Boolean != "":
 		val, err = d.decodeBoolean(value.Boolean)
@@ -177,8 +178,9 @@ func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
 		return true, nil
 	case "0", "false", "FALSE", "False":
 		return false, nil
+	default:
+		return false, fmt.Errorf("unrecognized value '%s' for boolean", value)
 	}
-	return false, fmt.Errorf("unrecognized value '%s' for boolean", value)
 }
 
 func (d *StdDecoder) decodeBase64(value string) ([]byte, error) {
