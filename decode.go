@@ -178,8 +178,9 @@ func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
 		return true, nil
 	case "0", "false", "FALSE", "False":
 		return false, nil
+	default:
+		return false, fmt.Errorf("unrecognized value '%s' for boolean", value)
 	}
-	return false, fmt.Errorf("unrecognized value '%s' for boolean", value)
 }
 
 func (d *StdDecoder) decodeBase64(value string) ([]byte, error) {
