@@ -16,8 +16,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Build project
+        env:
+          CI: true
         run: |
           make build-in-docker
 
@@ -28,13 +32,6 @@ jobs:
           file: ./build/coverage.txt
           yml: ./codecov.yaml
 
-  sonarcloud:
-    name: SonarCloud
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:

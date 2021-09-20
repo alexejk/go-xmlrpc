@@ -23,7 +23,11 @@ lint:
 .PHONY: test
 test: pre-build
 	@echo "Running tests..."
+ifeq ($(CI), true)
+	@go test -short -coverprofile=build/coverage.txt -json ./... > build/test-report.json
+else
 	@go test -short -coverprofile=build/coverage.txt -covermode=atomic ./...
+endif
 
 #--------------------------------
 # Build steps
