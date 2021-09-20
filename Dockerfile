@@ -6,6 +6,12 @@ RUN apk --no-cache add alpine-sdk
 
 WORKDIR /src
 
+ARG GOPROXY=""
+ARG CI=""
+
+ENV GOPROXY=${GOPROXY}
+ENV CI=${CI}
+
 # Copy over dependency file and download it if files changed
 # This allows build caching and faster re-builds
 COPY go.mod  .
