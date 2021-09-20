@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [opened, synchronize, reopened]
     branches:
       - master
 
@@ -14,9 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@master
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Build project
+        env:
+          CI: true
         run: |
           make build-in-docker
 
@@ -26,3 +31,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./build/coverage.txt
           yml: ./codecov.yaml
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

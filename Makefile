@@ -16,14 +16,18 @@ all: clean lint test build
 #--------------------------------
 
 .PHONY: lint
-lint:
+lint: pre-build
 	@echo "Linting code..."
 	@sh hack/linter.sh
 
 .PHONY: test
 test: pre-build
 	@echo "Running tests..."
+ifeq ($(CI), true)
+	@go test -short -coverprofile=build/coverage.txt -json ./... > build/test-report.json
+else
 	@go test -short -coverprofile=build/coverage.txt -covermode=atomic ./...
+endif
 
 #--------------------------------
 # Build steps
@@ -45,7 +49,7 @@ build:
 .PHONY: docker
 docker:
 # Build a new image (delete old one)
-	docker build --force-rm --build-arg GOPROXY -t $(BINARY_NAME) .
+	docker build --force-rm --build-arg GOPROXY --build-arg CI -t $(BINARY_NAME) .
 
 .PHONY: build-in-docker
 build-in-docker: docker
