@@ -23,4 +23,8 @@ if [[ ! -f $LINTER_EXEC ]]; then
     printf "${YELLOW}⣿ Installed ${NORMAL}${LINTER_NAME} as \"${LINTER_EXEC}\"\n"
 fi
 
-$LINTER_EXEC run ./...
+if [[ "$CI" == "true" ]]; then
+    $LINTER_EXEC run --out-format checkstyle ./... > build/report.xml
+else
+    $LINTER_EXEC run ./...
+fi
