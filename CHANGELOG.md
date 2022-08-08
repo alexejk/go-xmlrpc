@@ -1,4 +1,14 @@
-## 0.2.x
+## 0.x.y
+
+## 0.2.1
+
+Improvements:
+
+* Fixes go routine leak that is caused by `Codec` (#52)
+* A bit more robust tests that do not call remote systems
+* House keeping: dependency updates, no longer using deprecated methods in Go, making linter happier..
+
+Library is now built against Go 1.18
 
 ## 0.2.0
 
