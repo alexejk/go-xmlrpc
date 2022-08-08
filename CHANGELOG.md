@@ -1,5 +1,11 @@
 ## 0.x.y
 
+Improvements:
+
+* Ability to remap struct member names to via `xmlrpc` tags (#47)
+
+Library is now built against Go 1.19
+
 ## 0.3.0
 
 Improvements:
