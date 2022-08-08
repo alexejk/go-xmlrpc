@@ -199,3 +199,58 @@ func TestClient_Option_HttpClient(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_Option_SkipUnknownFields(t *testing.T) {
+	tests := []struct {
+		name   string
+		opts   []Option
+		expect bool
+	}{
+		{
+			name:   "default setting",
+			expect: false,
+		},
+		{
+			name: "new setting - false",
+			opts: []Option{
+				SkipUnknownFields(false),
+			},
+			expect: false,
+		},
+		{
+			name: "new setting - false",
+			opts: []Option{
+				SkipUnknownFields(true),
+			},
+			expect: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serverCalled := false
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				serverCalled = true
+				_, _ = fmt.Fprintln(w, string(loadTestFile(t, "response_bugzilla_version.xml")))
+			}))
+			defer ts.Close()
+
+			c, err := NewClient(ts.URL, tt.opts...)
+			require.NoError(t, err)
+
+			v := &struct {
+				Bugzilla struct {
+				}
+			}{}
+
+			err = c.Call("test.Method", nil, v)
+			if tt.expect {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+
+			require.True(t, serverCalled, "server must be called")
+		})
+	}
+}
