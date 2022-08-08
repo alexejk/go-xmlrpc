@@ -3,12 +3,12 @@ package xmlrpc
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClient_Option_Headers(t *testing.T) {
@@ -79,7 +79,7 @@ func TestClient_Option_Headers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			serverCalled := false
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.EqualValues(t, tt.expect, r.Header)
+				require.EqualValues(t, tt.expect, r.Header)
 
 				serverCalled = true
 				_, _ = fmt.Fprintln(w, string(loadTestFile(t, "response_simple.xml")))
@@ -87,12 +87,12 @@ func TestClient_Option_Headers(t *testing.T) {
 			defer ts.Close()
 
 			c, err := NewClient(ts.URL, tt.opts...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = c.Call("test.Method", nil, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.True(t, serverCalled, "server must be called")
+			require.True(t, serverCalled, "server must be called")
 		})
 	}
 }
@@ -129,7 +129,7 @@ func TestClient_Option_UserAgent(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ua := r.UserAgent()
 
-				assert.Equal(t, tt.expect, ua)
+				require.Equal(t, tt.expect, ua)
 
 				serverCalled = true
 				_, _ = fmt.Fprintln(w, string(loadTestFile(t, "response_simple.xml")))
@@ -137,12 +137,12 @@ func TestClient_Option_UserAgent(t *testing.T) {
 			defer ts.Close()
 
 			c, err := NewClient(ts.URL, tt.opts...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = c.Call("test.Method", nil, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.True(t, serverCalled, "server must be called")
+			require.True(t, serverCalled, "server must be called")
 		})
 	}
 }
@@ -170,7 +170,7 @@ func TestClient_Option_HttpClient(t *testing.T) {
 					Transport: RoundTripFunc(func(req *http.Request) *http.Response {
 						return &http.Response{
 							StatusCode: 200,
-							Body:       ioutil.NopCloser(bytes.NewBuffer(loadTestFile(t, "response_simple.xml"))),
+							Body:       io.NopCloser(bytes.NewBuffer(loadTestFile(t, "response_simple.xml"))),
 							Header:     map[string][]string{},
 						}
 					}),
@@ -190,12 +190,12 @@ func TestClient_Option_HttpClient(t *testing.T) {
 			defer ts.Close()
 
 			c, err := NewClient(ts.URL, tt.opts...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = c.Call("test.Method", nil, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			assert.Equal(t, tt.expectServerCall, serverCalled)
+			require.Equal(t, tt.expectServerCall, serverCalled)
 		})
 	}
 }
