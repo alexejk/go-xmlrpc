@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<methodResponse>
+    <params>
+        <param>
+            <value><string>South Dakota</string></value>
+        </param>
+        <param>
+            <value><int>12345</int></value>
+        </param>
+    </params>
+</methodResponse>
