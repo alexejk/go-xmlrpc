@@ -3,11 +3,11 @@ package xmlrpc
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStdDecoder_DecodeRaw(t *testing.T) {
@@ -119,11 +119,11 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
 
 			if tt.err == nil {
-				assert.NoError(t, err)
-				assert.EqualValues(t, tt.expect, tt.v)
+				require.NoError(t, err)
+				require.EqualValues(t, tt.expect, tt.v)
 			} else {
-				assert.Error(t, err)
-				assert.Equal(t, tt.err, err)
+				require.Error(t, err)
+				require.Equal(t, tt.err, err)
 			}
 		})
 	}
@@ -231,14 +231,14 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 			dec := &StdDecoder{}
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
 			if tt.err == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
-				assert.Equal(t, tt.err, errors.Unwrap(err))
+				require.Error(t, err)
+				require.Equal(t, tt.err, errors.Unwrap(err))
 			}
 
 			if tt.err == nil {
-				assert.EqualValues(t, tt.expect, tt.v)
+				require.EqualValues(t, tt.expect, tt.v)
 			}
 		})
 	}
@@ -250,11 +250,11 @@ func TestStdDecoder_DecodeRaw_Fault(t *testing.T) {
 	}{}
 	dec := &StdDecoder{}
 	err := dec.DecodeRaw(loadTestFile(t, "response_fault.xml"), decodeTarget)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	fT := &Fault{}
-	assert.True(t, errors.As(err, &fT))
-	assert.EqualValues(t, &Fault{
+	require.True(t, errors.As(err, &fT))
+	require.EqualValues(t, &Fault{
 		Code:   4,
 		String: "Too many parameters.",
 	}, fT)
@@ -306,7 +306,7 @@ func Test_fieldsMustEqual(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := fieldsMustEqual(tt.input, tt.expect)
-			assert.Equal(t, tt.err, err)
+			require.Equal(t, tt.err, err)
 		})
 	}
 }
@@ -337,7 +337,7 @@ func Test_structMemberToFieldName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := structMemberToFieldName(tt.input)
-			assert.Equal(t, tt.expect, r)
+			require.Equal(t, tt.expect, r)
 		})
 	}
 }
@@ -345,7 +345,7 @@ func Test_structMemberToFieldName(t *testing.T) {
 func loadTestFile(t *testing.T, name string) []byte {
 	path := filepath.Join("testdata", name) // relative path
 
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}

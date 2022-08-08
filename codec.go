@@ -5,7 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"net"
 	"net/http"
 	"net/rpc"
 	"net/url"
@@ -34,6 +35,7 @@ type Codec struct {
 	ready chan uint64
 
 	userAgent string
+	shutdown  chan struct{}
 }
 
 type rpcCall struct {
@@ -56,6 +58,7 @@ func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 		ready:    make(chan uint64),
 
 		userAgent: defaultUserAgent,
+		shutdown:  make(chan struct{}),
 	}
 }
 
@@ -81,7 +84,7 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 
 	httpRequest.Header.Set("Content-Length", fmt.Sprintf("%d", bodyBuffer.Len()))
 
-	httpResponse, err := c.httpClient.Do(httpRequest) // nolint:bodyclose // Handled in ReadResponseHeader
+	httpResponse, err := c.httpClient.Do(httpRequest) //nolint:bodyclose // Handled in ReadResponseHeader
 	if err != nil {
 		return err
 	}
@@ -100,46 +103,51 @@ func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 }
 
 func (c *Codec) ReadResponseHeader(resp *rpc.Response) error {
-	seq := <-c.ready
+	select {
+	case seq := <-c.ready:
+		// Handle request that is ready
+		c.mutex.Lock()
+		call := c.pending[seq]
+		delete(c.pending, seq)
+		c.mutex.Unlock()
 
-	c.mutex.Lock()
-	call := c.pending[seq]
-	delete(c.pending, seq)
-	c.mutex.Unlock()
+		resp.Seq = call.Seq
+		resp.ServiceMethod = call.ServiceMethod
 
-	resp.Seq = call.Seq
-	resp.ServiceMethod = call.ServiceMethod
+		r := call.httpResponse
 
-	r := call.httpResponse
+		defer r.Body.Close()
 
-	defer r.Body.Close()
+		if r.StatusCode < 200 || r.StatusCode >= 300 {
+			resp.Error = fmt.Sprintf("bad response code: %d", r.StatusCode)
+			return nil
+		}
 
-	if r.StatusCode < 200 || r.StatusCode >= 300 {
-		resp.Error = fmt.Sprintf("bad response code: %d", r.StatusCode)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+
+		decodableResponse, err := NewResponse(body)
+		if err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+
+		// Return response Fault already at this stage
+		if err := c.decoder.DecodeFault(decodableResponse); err != nil {
+			resp.Error = err.Error()
+			return nil
+		}
+
+		c.response = decodableResponse
 		return nil
+
+	case <-c.shutdown:
+		// Handle shutdown signal
+		return net.ErrClosed
 	}
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-
-	decodableResponse, err := NewResponse(body)
-	if err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-
-	// Return response Fault already a this stage
-	if err := c.decoder.DecodeFault(decodableResponse); err != nil {
-		resp.Error = err.Error()
-		return nil
-	}
-
-	c.response = decodableResponse
-
-	return nil
 }
 func (c *Codec) ReadResponseBody(v interface{}) error {
 	if v == nil {
@@ -154,6 +162,7 @@ func (c *Codec) ReadResponseBody(v interface{}) error {
 }
 
 func (c *Codec) Close() error {
+	c.shutdown <- struct{}{}
 	c.httpClient.CloseIdleConnections()
 	return nil
 }

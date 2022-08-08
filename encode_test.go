@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStdEncoder_Encode(t *testing.T) {
@@ -125,8 +125,8 @@ func TestStdEncoder_Encode(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
 			err := enc.Encode(buf, tt.methodName, tt.args)
-			assert.Equal(t, tt.expect, buf.String())
-			assert.Equal(t, tt.err, err)
+			require.Equal(t, tt.expect, buf.String())
+			require.Equal(t, tt.err, err)
 		})
 	}
 }
@@ -168,7 +168,7 @@ func TestStdEncoder_isByteArray(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			enc := &StdEncoder{}
 			resp := enc.isByteArray(tt.input)
-			assert.Equal(t, tt.expect, resp)
+			require.Equal(t, tt.expect, resp)
 		})
 	}
 }
@@ -206,8 +206,8 @@ func Test_encodeArray(t *testing.T) {
 			enc := &StdEncoder{}
 			err := enc.encodeArray(buf, tt.input)
 
-			assert.Equal(t, tt.err, err)
-			assert.Equal(t, tt.expect, buf.String())
+			require.Equal(t, tt.err, err)
+			require.Equal(t, tt.expect, buf.String())
 		})
 	}
 }
@@ -241,8 +241,8 @@ func Test_encodeBase64(t *testing.T) {
 			enc := &StdEncoder{}
 			err := enc.encodeBase64(buf, tt.input)
 
-			assert.Equal(t, tt.err, err)
-			assert.Equal(t, tt.expect, buf.String())
+			require.Equal(t, tt.err, err)
+			require.Equal(t, tt.expect, buf.String())
 		})
 	}
 }
@@ -313,8 +313,8 @@ func Test_encodeStruct(t *testing.T) {
 			enc := &StdEncoder{}
 			err := enc.encodeStruct(buf, tt.input)
 
-			assert.Equal(t, tt.err, err)
-			assert.Equal(t, tt.expect, buf.String())
+			require.Equal(t, tt.err, err)
+			require.Equal(t, tt.expect, buf.String())
 		})
 	}
 }
@@ -363,8 +363,8 @@ func Test_encodeTime(t *testing.T) {
 			enc := &StdEncoder{}
 			err := enc.encodeTime(buf, tt.input)
 
-			assert.Equal(t, tt.err, err)
-			assert.Equal(t, tt.expect, buf.String())
+			require.Equal(t, tt.err, err)
+			require.Equal(t, tt.expect, buf.String())
 		})
 	}
 }
