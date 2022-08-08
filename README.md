@@ -32,7 +32,8 @@ import(
 
 func main() {
     client, _ := xmlrpc.NewClient("https://bugzilla.mozilla.org/xmlrpc.cgi")
-
+    defer client.Close()
+	
     result := &struct {
         BugzillaVersion struct {
             Version string
@@ -65,6 +66,36 @@ Response is decoded following similar rules to argument encoding.
 * Order of fields is important.
 * Outer struct should contain exported field for each response parameter.
 * Structs may contain pointers - they will be initialized if required.
+
+### Field renaming
+
+XML-RPC specification does not necessarily specify any rules for struct's member names. Some services allow struct member names to include characters not compatible with standard Go field naming.
+To support these use-cases, it is possible to remap the field by use of struct tag `xmlrpc`. 
+
+For example, if a response value is a struct that looks like this:
+
+```xml
+<struct>
+    <member>
+        <name>stringValue</name>
+        <value><string>bar</string></value>
+    </member>
+    <member>
+        <name>2_numeric.Value</name>
+        <value><i4>2</i4></value>
+    </member>
+</struct>
+```
+
+it would be impossible to map the second value to a Go struct with a field `2_numeric.Value` as it's not valid in Go.
+Instead, we can map it to any valid field as follows:
+
+```go
+v := &struct {
+    StringValue string
+    SecondNumericValue string `xmlrpc:"2_numeric.Value"`
+}{}
+```
 
 ## Building
 
