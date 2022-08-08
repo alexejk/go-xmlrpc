@@ -62,6 +62,16 @@ func NewCodec(endpoint *url.URL, httpClient *http.Client) *Codec {
 	}
 }
 
+// SetEncoder allows setting a new Encoder on the codec
+func (c *Codec) SetEncoder(encoder Encoder) {
+	c.encoder = encoder
+}
+
+// SetDecoder allows setting a new Decoder on the codec
+func (c *Codec) SetDecoder(decoder Decoder) {
+	c.decoder = decoder
+}
+
 func (c *Codec) WriteRequest(req *rpc.Request, args interface{}) error {
 	bodyBuffer := new(bytes.Buffer)
 	err := c.encoder.Encode(bodyBuffer, req.ServiceMethod, args)

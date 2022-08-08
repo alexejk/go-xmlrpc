@@ -26,3 +26,13 @@ func UserAgent(userAgent string) Option {
 		client.codec.userAgent = userAgent
 	}
 }
+
+// SkipUnknownFields option allows setting decoder setting to skip unknown fields.
+// This is only effective if using standard client, which in turn uses StdDecoder.
+func SkipUnknownFields(skip bool) Option {
+	return func(client *Client) {
+		if v, ok := client.codec.decoder.(*StdDecoder); ok {
+			v.skipUnknownFields = skip
+		}
+	}
+}

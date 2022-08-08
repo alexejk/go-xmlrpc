@@ -13,11 +13,12 @@ import (
 
 func TestStdDecoder_DecodeRaw(t *testing.T) {
 	tests := []struct {
-		name     string
-		testFile string
-		v        interface{}
-		expect   interface{}
-		err      error
+		name        string
+		testFile    string
+		skipUnknown bool
+		v           interface{}
+		expect      interface{}
+		err         error
 	}{
 		{
 			name:     "simple response",
@@ -108,6 +109,39 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 			},
 		},
 		{
+			name:        "struct response - skip unknown",
+			testFile:    "response_struct.xml",
+			skipUnknown: true,
+			v: &struct {
+				Struct struct {
+					Foo          string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{},
+			expect: &struct {
+				Struct struct {
+					Foo          string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}
+			}{
+				Struct: struct {
+					Foo          string
+					Baz          int
+					WoBleBobble  bool
+					WoBleBobble2 int
+				}{
+					Foo:          "bar",
+					Baz:          2,
+					WoBleBobble:  true,
+					WoBleBobble2: 34,
+				},
+			},
+		},
+		{
 			name:     "struct response - bad param",
 			testFile: "response_struct.xml",
 			v: &struct {
@@ -121,6 +155,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dec := &StdDecoder{}
+			dec.skipUnknownFields = tt.skipUnknown
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)
 
 			if tt.err == nil {

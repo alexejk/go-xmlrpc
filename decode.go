@@ -22,7 +22,9 @@ type Decoder interface {
 }
 
 // StdDecoder is the default implementation of the Decoder interface.
-type StdDecoder struct{}
+type StdDecoder struct {
+	skipUnknownFields bool
+}
 
 func (d *StdDecoder) DecodeRaw(body []byte, v interface{}) error {
 	response, err := NewResponse(body)
@@ -139,6 +141,9 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 			f := findFieldByNameOrTag(field, fName)
 
 			if !f.IsValid() {
+				if d.skipUnknownFields {
+					continue
+				}
 				return fmt.Errorf("cannot find field '%s' on struct", fName)
 			}
 
