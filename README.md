@@ -50,6 +50,7 @@ For instance:
 
  - To customize any aspect of `http.Client` used to perform requests, use `HttpClient` option, otherwise `http.DefaultClient` will be used
  - To pass custom headers, make use of `Headers` option.
+ - To not fail parsing when unmapped fields exist in RPC responses, use `SkipUnknownFields(true)` option (default is `false`)
 
 ### Argument encoding
 
@@ -64,7 +65,7 @@ Arguments to the remote RPC method are passed on as a `*struct`. This struct is 
 Response is decoded following similar rules to argument encoding.
 
 * Order of fields is important.
-* Outer struct should contain exported field for each response parameter.
+* Outer struct should contain exported field for each response parameter (it is possible to ignore unknown structs with `SkipUnknownFields` option).
 * Structs may contain pointers - they will be initialized if required.
 
 ### Field renaming
@@ -96,6 +97,8 @@ v := &struct {
     SecondNumericValue string `xmlrpc:"2_numeric.Value"`
 }{}
 ```
+
+Similarly, request encoding honors `xmlrpc` tags.
 
 ## Building
 
