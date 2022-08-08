@@ -1,9 +1,11 @@
 ## 0.x.y
 
+## 0.4.0
+
 Improvements:
 
 * Ability to remap struct member names to via `xmlrpc` tags (#47)
-* Ability to skip unknown fields by `SkipUnknownFields(bool)` `Option` (#48)
+* Ability to skip unknown fields by `SkipUnknownFields(bool)` `Option`. Default is still `false` (#48)
 
 Library is now built against Go 1.19
 
