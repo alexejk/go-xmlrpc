@@ -20,6 +20,10 @@
                         <name>WoBleBobble2</name>
                         <value><int>34</int></value>
                     </member>
+                    <member>
+                        <name>2</name>
+                        <value><int>3</int></value>
+                    </member>
                 </struct>
             </value>
         </param>

@@ -198,8 +198,11 @@ func (e *StdEncoder) encodeStruct(w io.Writer, val interface{}) error {
 
 		fieldType := reflect.TypeOf(val).Field(i)
 		fieldName := fieldType.Name
-		if fieldType.Tag.Get("xml") != "" {
-			fieldName = fieldType.Tag.Get("xml")
+		tag := fieldType.Tag
+		if tag.Get("xml") != "" {
+			fieldName = tag.Get("xml")
+		} else if tag.Get("xmlrpc") != "" {
+			fieldName = tag.Get("xmlrpc")
 		}
 		_, _ = fmt.Fprintf(w, "<member><name>%s</name>", fieldName)
 

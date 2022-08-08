@@ -118,6 +118,40 @@ func TestStdEncoder_Encode(t *testing.T) {
 			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><string>&lt;div class=&#34;whitespace&#34;&gt;&amp;nbsp;&lt;/div&gt;</string></value></param></params></methodCall>`,
 			err:    nil,
 		},
+		{
+			name:       "Struct args - encoded",
+			methodName: "myMethod",
+			args: &struct {
+				MyStruct struct {
+					String string
+				}
+			}{
+				MyStruct: struct {
+					String string
+				}{
+					String: "foo",
+				},
+			},
+			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><struct><member><name>String</name><value><string>foo</string></value></member></struct></value></param></params></methodCall>`,
+			err:    nil,
+		},
+		{
+			name:       "Struct args renamed - encoded",
+			methodName: "myMethod",
+			args: &struct {
+				MyStruct struct {
+					String string `xmlrpc:"2-.Arg"`
+				}
+			}{
+				MyStruct: struct {
+					String string `xmlrpc:"2-.Arg"`
+				}{
+					String: "foo",
+				},
+			},
+			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><struct><member><name>2-.Arg</name><value><string>foo</string></value></member></struct></value></param></params></methodCall>`,
+			err:    nil,
+		},
 	}
 
 	for _, tt := range tests {

@@ -136,7 +136,7 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 		for _, m := range value.Struct {
 			// Upper-case the name
 			fName := structMemberToFieldName(m.Name)
-			f := field.FieldByName(fName)
+			f := findFieldByNameOrTag(field, fName)
 
 			if !f.IsValid() {
 				return fmt.Errorf("cannot find field '%s' on struct", fName)
@@ -189,6 +189,52 @@ func (d *StdDecoder) decodeBase64(value string) ([]byte, error) {
 
 func (d *StdDecoder) decodeDateTime(value string) (time.Time, error) {
 	return time.Parse(time.RFC3339, value)
+}
+
+func findFieldByNameOrTag(field reflect.Value, fName string) reflect.Value {
+	typ := field.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		f := typ.Field(i)
+		keyName := getFieldNameFromTag(&f, "xmlrpc")
+
+		// If tagged name matches search value - return
+		if keyName == fName {
+			return field.Field(i)
+		}
+	}
+
+	return field.FieldByName(fName)
+}
+
+func getFieldNameFromTag(f *reflect.StructField, tagName string) string {
+	var keyName string
+
+	if f.PkgPath != "" {
+		return keyName
+	}
+
+	tagValue := f.Tag.Get(tagName)
+	if tagValue == "" {
+		return keyName
+	}
+
+	// Determine the name of the field based on struct tag
+	if index := strings.Index(tagValue, ","); index != -1 {
+		if tagValue[:index] == "-" {
+			return keyName
+		}
+
+		if keyNameTagValue := tagValue[:index]; keyNameTagValue != "" {
+			keyName = keyNameTagValue
+		}
+
+		return keyName
+	}
+	if len(tagValue) > 0 && tagValue != "-" {
+		keyName = tagValue
+	}
+
+	return keyName
 }
 
 func fieldsMustEqual(v interface{}, expectation int) error {

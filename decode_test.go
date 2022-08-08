@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -79,6 +80,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 int
+					Field2       int `xmlrpc:"2"`
 				}
 			}{},
 			expect: &struct {
@@ -87,6 +89,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 int
+					Field2       int `xmlrpc:"2"`
 				}
 			}{
 				Struct: struct {
@@ -94,11 +97,13 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 int
+					Field2       int `xmlrpc:"2"`
 				}{
 					Foo:          "bar",
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: 34,
+					Field2:       3,
 				},
 			},
 		},
@@ -156,6 +161,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 int
+					Field2       int `xmlrpc:"2"`
 				}
 			}{},
 			expect: &struct {
@@ -164,6 +170,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 int
+					Field2       int `xmlrpc:"2"`
 				}
 			}{
 				Struct: struct {
@@ -171,11 +178,13 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 int
+					Field2       int `xmlrpc:"2"`
 				}{
 					Foo:          "bar",
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: 34,
+					Field2:       3,
 				},
 			},
 		},
@@ -188,6 +197,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 *int
+					Field2       *int `xmlrpc:"2"`
 				}
 			}{},
 			expect: &struct {
@@ -196,6 +206,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 *int
+					Field2       *int `xmlrpc:"2"`
 				}
 			}{
 				Struct: &struct {
@@ -203,11 +214,13 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					Baz          int
 					WoBleBobble  bool
 					WoBleBobble2 *int
+					Field2       *int `xmlrpc:"2"`
 				}{
 					Foo:          sPtr("bar"),
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: iPtr(34),
+					Field2:       iPtr(3),
 				},
 			},
 		},
@@ -309,6 +322,40 @@ func Test_fieldsMustEqual(t *testing.T) {
 			require.Equal(t, tt.err, err)
 		})
 	}
+}
+
+func Test_findFieldByNameOrTag(t *testing.T) {
+	v := &struct {
+		Normal       string
+		Renamed      string `xmlrpc:"222"`
+		SkipMe       string `xmlrpc:"-"`
+		UseMeInstead string `xmlrpc:"SkipMe,unknown-opt"`
+	}{
+		Normal:       "xxx",
+		Renamed:      "yyy",
+		SkipMe:       "skipMe",
+		UseMeInstead: "Don't Skip Me",
+	}
+
+	// Normal fetch
+	normField := reflect.Indirect(reflect.ValueOf(v)).FieldByName("Normal")
+	normFieldFound := findFieldByNameOrTag(reflect.Indirect(reflect.ValueOf(v)), "Normal")
+	require.Equal(t, normField, normFieldFound)
+	require.True(t, normFieldFound.IsValid())
+
+	// Basic remapping
+	renamedField := reflect.Indirect(reflect.ValueOf(v)).FieldByName("Renamed")
+	renamedFieldFound := findFieldByNameOrTag(reflect.Indirect(reflect.ValueOf(v)), "222")
+	require.Equal(t, renamedField, renamedFieldFound)
+	require.True(t, renamedFieldFound.IsValid())
+
+	// Remapping with skip
+	// Actual field "SkipMe" is ignored, and struct field "SkipMe" is remapped to a "UseMeInstead"
+	skipField := reflect.Indirect(reflect.ValueOf(v)).FieldByName("UseMeInstead")
+	skipFieldFound := findFieldByNameOrTag(reflect.Indirect(reflect.ValueOf(v)), "SkipMe")
+	require.Equal(t, skipField, skipFieldFound)
+	require.True(t, skipFieldFound.IsValid())
+	require.Equal(t, "Don't Skip Me", skipFieldFound.String())
 }
 
 func Test_structMemberToFieldName(t *testing.T) {
