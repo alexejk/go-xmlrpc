@@ -1,6 +1,14 @@
 linters-settings:
   dupl:
     threshold: 100
+  depguard:
+    rules:
+      Test:
+        files:
+        - $test
+        allow:
+        - $gostd
+        - github.com/stretchr/testify
   gci:
     local-prefixes: github.com/golangci/golangci-lint
   goconst:
@@ -44,7 +52,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -68,10 +75,8 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
-    - structcheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
