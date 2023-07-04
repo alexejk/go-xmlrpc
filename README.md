@@ -2,7 +2,7 @@
 
 This is an implementation of client-side part of XML-RPC protocol in Go.
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/alexejk/go-xmlrpc/Build)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/alexejk/go-xmlrpc/build.yml?branch=master)
 [![codecov](https://codecov.io/gh/alexejk/go-xmlrpc/branch/master/graph/badge.svg)](https://codecov.io/gh/alexejk/go-xmlrpc)
 [![Go Report Card](https://goreportcard.com/badge/alexejk.io/go-xmlrpc)](https://goreportcard.com/report/alexejk.io/go-xmlrpc)
 
