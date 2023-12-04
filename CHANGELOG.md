@@ -1,4 +1,10 @@
-## 0.x.y
+## 0.4.1
+
+Bugfixes:
+
+* Adding missing handling of undeclared value types to default to `string` as per XML-RPC spec (previously `nil` would be returned)
+
+Library is now built against Go 1.21
 
 ## 0.4.0
 
