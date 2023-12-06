@@ -37,6 +37,8 @@ type ResponseValue struct {
 	Boolean  string                  `xml:"boolean"`
 	DateTime string                  `xml:"dateTime.iso8601"`
 	Base64   string                  `xml:"base64"`
+
+	RawXML string `xml:",innerxml"`
 }
 
 // ResponseStructMember contains name-value pair of the struct

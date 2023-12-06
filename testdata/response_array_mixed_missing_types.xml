@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodResponse>
+    <params>
+        <param>
+            <value>
+                <array>
+                    <data>
+                        <value><i4>0</i4></value>
+                        <value>4099</value>
+                        <value>O3D217AC</value>
+                        <value><c><b>123</b></c></value>
+                    </data>
+                </array>
+            </value>
+        </param>
+    </params>
+</methodResponse>
