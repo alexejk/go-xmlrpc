@@ -308,6 +308,46 @@ func TestStdDecoder_DecodeRaw_Fault(t *testing.T) {
 	}, fT)
 }
 
+func TestStdDecoder_DecodeRaw_Arrays(t *testing.T) {
+	type TestStruct struct {
+		Array []any
+	}
+
+	tests := map[string]struct {
+		testFile string
+		expect   *TestStruct
+		err      error
+	}{
+		"Basic mixed array": {
+			testFile: "response_array_mixed.xml",
+			expect: &TestStruct{
+				Array: []any{10, "s11", true},
+			},
+		},
+		"Basic mixed array - missing type declarations": {
+			testFile: "response_array_mixed_missing_types.xml",
+			expect: &TestStruct{
+				Array: []any{0, "4099", "O3D217AC", "<c><b>123</b></c>"},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			dec := &StdDecoder{}
+			decodeTarget := &TestStruct{}
+			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), decodeTarget)
+			if tt.err == nil {
+				require.NoError(t, err)
+				require.EqualValues(t, tt.expect, decodeTarget)
+			} else {
+				require.Error(t, err)
+				require.Equal(t, tt.err, err)
+			}
+		})
+	}
+}
+
 func Test_fieldsMustEqual(t *testing.T) {
 	tests := []struct {
 		name   string

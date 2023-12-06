@@ -153,7 +153,8 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 		}
 
 	default:
-		// NADA
+		// Default to inner string (raw XML)
+		val, err = value.RawXML, nil
 	}
 
 	if err != nil {
