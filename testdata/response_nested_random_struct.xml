@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<methodResponse>
+    <params>
+        <param>
+            <value>
+                <struct>
+                    <member>
+                        <name>TESTING1</name>
+                        <value>
+                            <array>
+                                <data>
+                                    <value>
+                                        <array>
+                                            <data>
+                                                <value>
+                                                    <struct>
+                                                        <member><name>id</name><value><string>1009470</string></value></member>
+                                                        <member><name>pub_date</name><value><string>2020-01-11 00:00:00</string></value></member>
+                                                        <member><name>title</name><value><string>TITLE</string></value></member>
+                                                    </struct></value>
+                                                <value><struct>
+                                                    <member><name>title</name><value><string>TITLE2</string></value></member>
+                                                    <member><name>pub_date</name><value><string>2020-01-11 00:00:00</string></value></member>
+                                                    <member><name>id</name><value><string>1009879</string></value></member>
+                                                </struct></value>
+                                                <value><struct>
+                                                    <member><name>title</name><value><string>Title3</string></value></member>
+                                                    <member><name>pub_date</name><value><string>2020-01-13 17:16:49</string></value></member>
+                                                    <member><name>id</name><value><string>1304451</string></value></member>
+                                                </struct></value>
+                                            </data></array></value>
+                                </data></array></value>
+                    </member>
+                    <member>
+                        <name>TESTING2</name>
+                        <value>
+                            <array>
+                                <data>
+                                    <value>
+                                        <array>
+                                            <data>
+                                                <value>
+                                                    <struct>
+                                                        <member><name>id</name><value><string>1329812</string></value></member>
+                                                        <member><name>pub_date</name><value><string>2020-01-11 00:00:00</string></value></member>
+                                                        <member><name>title</name><value><string>NewTitle</string></value></member>
+                                                    </struct></value>
+                                                <value><struct>
+                                                    <member><name>title</name><value><string>NextTitle</string></value></member>
+                                                    <member><name>pub_date</name><value><string>2021-01-11 00:00:00</string></value></member>
+                                                    <member><name>id</name><value><string>1489372</string></value></member>
+                                                </struct></value>
+                                                <value><struct>
+                                                    <member><name>title</name><value><string>Title12</string></value></member>
+                                                    <member><name>pub_date</name><value><string>2020-01-13 17:16:49</string></value></member>
+                                                    <member><name>id</name><value><string>1229276</string></value></member>
+                                                </struct></value>
+                                            </data></array></value>
+                                </data></array></value>
+                    </member>
+                </struct>
+            </value>
+        </param>
+    </params>
+</methodResponse>
