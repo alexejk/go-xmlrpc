@@ -261,7 +261,7 @@ func getFieldNameFromTag(f *reflect.StructField, tagName string) string {
 
 		return keyName
 	}
-	if len(tagValue) > 0 && tagValue != "-" {
+	if tagValue != "" && tagValue != "-" {
 		keyName = tagValue
 	}
 
