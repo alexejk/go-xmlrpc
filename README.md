@@ -67,6 +67,7 @@ Response is decoded following similar rules to argument encoding.
 * Order of fields is important.
 * Outer struct should contain exported field for each response parameter (it is possible to ignore unknown structs with `SkipUnknownFields` option).
 * Structs may contain pointers - they will be initialized if required.
+* Structs may be parsed as `map[string]any`, in case struct member names are not known at compile time. Map keys are enforced to `string` type.
 
 ### Field renaming
 

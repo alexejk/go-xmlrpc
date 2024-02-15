@@ -1,3 +1,9 @@
+## 0.5.0
+
+Improvements:
+
+* Ability to decode struct members into a map.
+
 ## 0.4.1
 
 Bugfixes:

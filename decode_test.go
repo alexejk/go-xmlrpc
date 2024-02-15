@@ -148,7 +148,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 				Struct string // <- This is unexpected type
 			}{},
 			expect: nil,
-			err:    fmt.Errorf(errFormatInvalidFieldType, "struct", "string"),
+			err:    fmt.Errorf(errFormatInvalidFieldTypeOrType, "struct", "map", "string"),
 		},
 	}
 
@@ -336,6 +336,87 @@ func TestStdDecoder_DecodeRaw_Arrays(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			dec := &StdDecoder{}
 			decodeTarget := &TestStruct{}
+			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), decodeTarget)
+			if tt.err == nil {
+				require.NoError(t, err)
+				require.EqualValues(t, tt.expect, decodeTarget)
+			} else {
+				require.Error(t, err)
+				require.Equal(t, tt.err, err)
+			}
+		})
+	}
+}
+
+func TestStdDecoder_DecodeRaw_Struct_Map(t *testing.T) {
+	type DataType struct {
+		Id      string `json:"id" xmlrpc:"id"`
+		PubDate string `json:"pub_date" xmlrpc:"pub_date"`
+		Title   string `json:"title" xmlrpc:"title"`
+	}
+
+	type TestResponse struct {
+		Data map[string][][]DataType
+	}
+
+	tests := map[string]struct {
+		testFile string
+		v        interface{}
+		expect   interface{}
+		err      error
+	}{
+		"Basic struct to map": {
+			testFile: "response_struct.xml",
+			v: &struct {
+				Data map[string]any
+			}{},
+			expect: &struct {
+				Data map[string]any
+			}{
+				Data: map[string]any{
+					"foo":          "bar",
+					"baz":          2,
+					"woBleBobble":  true,
+					"WoBleBobble2": 34,
+					"2":            3,
+				},
+			},
+		},
+		"Invalid key type": {
+			testFile: "response_struct.xml",
+			v: &struct {
+				Data map[any]any
+			}{},
+			err: fmt.Errorf(errFormatInvalidMapKeyTypeForStruct, "interface"),
+		},
+		"Nested structs to map": {
+			testFile: "response_nested_random_struct.xml",
+			v:        &TestResponse{},
+			expect: &TestResponse{
+				Data: map[string][][]DataType{
+					"TESTING1": {
+						{
+							{Id: "1009470", PubDate: "2020-01-11 00:00:00", Title: "TITLE"},
+							{Id: "1009879", PubDate: "2020-01-11 00:00:00", Title: "TITLE2"},
+							{Id: "1304451", PubDate: "2020-01-13 17:16:49", Title: "Title3"},
+						},
+					},
+					"TESTING2": {
+						{
+							{Id: "1329812", PubDate: "2020-01-11 00:00:00", Title: "NewTitle"},
+							{Id: "1489372", PubDate: "2021-01-11 00:00:00", Title: "NextTitle"},
+							{Id: "1229276", PubDate: "2020-01-13 17:16:49", Title: "Title12"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			dec := &StdDecoder{}
+			decodeTarget := tt.v
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), decodeTarget)
 			if tt.err == nil {
 				require.NoError(t, err)

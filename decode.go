@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	errFormatInvalidFieldType = "invalid field type: expected '%s', got '%s'"
-	float64BitSize            = 64
+	errFormatInvalidFieldType           = "invalid field type: expected '%s', got '%s'"
+	errFormatInvalidFieldTypeOrType     = "invalid field type: expected '%s' or '%s', got '%s'"
+	errFormatInvalidMapKeyTypeForStruct = "invalid map key type: must be 'string' when decoding structs into a map, got '%s'"
+	float64BitSize                      = 64
 )
 
 // Decoder implementations provide mechanisms for parsing of XML-RPC responses to native data-types.
@@ -131,24 +133,47 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 	// Struct decoding
 	case len(value.Struct) != 0:
 
-		if field.Kind() != reflect.Struct {
-			return fmt.Errorf(errFormatInvalidFieldType, reflect.Struct.String(), field.Kind().String())
+		fieldKind := field.Kind()
+		if fieldKind != reflect.Struct && fieldKind != reflect.Map {
+			return fmt.Errorf(errFormatInvalidFieldTypeOrType, reflect.Struct.String(), reflect.Map.String(), fieldKind.String())
+		}
+
+		// If we are targeting a map, it should be initialized
+		if fieldKind == reflect.Map {
+			if kt := field.Type().Key().Kind(); kt != reflect.String {
+				return fmt.Errorf(errFormatInvalidMapKeyTypeForStruct, kt.String())
+			}
+
+			if field.IsNil() {
+				field.Set(reflect.MakeMap(field.Type()))
+			}
 		}
 
 		for _, m := range value.Struct {
-			// Upper-case the name
-			fName := structMemberToFieldName(m.Name)
-			f := findFieldByNameOrTag(field, fName)
+			if fieldKind == reflect.Map {
+				mapKey := reflect.ValueOf(m.Name)
+				f := reflect.New(field.Type().Elem()).Elem()
 
-			if !f.IsValid() {
-				if d.skipUnknownFields {
-					continue
+				if err := d.decodeValue(&m.Value, f); err != nil {
+					return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
 				}
-				return fmt.Errorf("cannot find field '%s' on struct", fName)
-			}
 
-			if err := d.decodeValue(&m.Value, f); err != nil {
-				return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
+				field.SetMapIndex(mapKey, f)
+			} else {
+				// Upper-case the name
+				fName := structMemberToFieldName(m.Name)
+				f := findFieldByNameOrTag(field, fName)
+
+				if !f.IsValid() {
+					if d.skipUnknownFields {
+						continue
+					}
+					return fmt.Errorf("cannot find field '%s' on struct", fName)
+				}
+
+				if err := d.decodeValue(&m.Value, f); err != nil {
+					return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
+				}
 			}
 		}
 
@@ -236,7 +261,7 @@ func getFieldNameFromTag(f *reflect.StructField, tagName string) string {
 
 		return keyName
 	}
-	if len(tagValue) > 0 && tagValue != "-" {
+	if tagValue != "" && tagValue != "-" {
 		keyName = tagValue
 	}
 
