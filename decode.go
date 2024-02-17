@@ -72,13 +72,17 @@ func (d *StdDecoder) decodeFault(fault *ResponseFault) *Fault {
 	for _, m := range fault.Value.Struct {
 		switch m.Name {
 		case "faultCode":
-			if m.Value.Int != "" {
-				f.Code, _ = strconv.Atoi(m.Value.Int)
+			if m.Value.Int != nil {
+				f.Code, _ = strconv.Atoi(*m.Value.Int)
+			} else if m.Value.Int4 != nil {
+				f.Code, _ = strconv.Atoi(*m.Value.Int4)
 			} else {
-				f.Code, _ = strconv.Atoi(m.Value.Int4)
+				f.Code = 0 // Unknown fault code
 			}
 		case "faultString":
-			f.String = m.Value.String
+			if m.Value.String != nil {
+				f.String = *m.Value.String
+			}
 		}
 	}
 
@@ -92,36 +96,41 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 	var err error
 
 	switch {
-	case value.Int != "":
-		val, err = strconv.Atoi(value.Int)
+	case value.Int != nil:
+		val, err = d.decodeInt(*value.Int)
 
-	case value.Int4 != "":
-		val, err = strconv.Atoi(value.Int4)
+	case value.Int4 != nil:
+		val, err = d.decodeInt(*value.Int4)
 
-	case value.Double != "":
-		val, err = strconv.ParseFloat(value.Double, float64BitSize)
+	case value.Double != nil:
+		val, err = d.decodeDouble(*value.Double)
 
-	case value.Boolean != "":
-		val, err = d.decodeBoolean(value.Boolean)
+	case value.Boolean != nil:
+		val, err = d.decodeBoolean(*value.Boolean)
 
-	case value.String != "":
-		val, err = value.String, nil
+	case value.String != nil:
+		val, err = *value.String, nil
 
-	case value.Base64 != "":
-		val, err = d.decodeBase64(value.Base64)
+	case value.Base64 != nil:
+		val, err = d.decodeBase64(*value.Base64)
 
-	case value.DateTime != "":
-		val, err = d.decodeDateTime(value.DateTime)
+	case value.DateTime != nil:
+		val, err = d.decodeDateTime(*value.DateTime)
 
 	// Array decoding
-	case len(value.Array) > 0:
-
+	case value.Array != nil:
 		if field.Kind() != reflect.Slice {
 			return fmt.Errorf(errFormatInvalidFieldType, reflect.Slice.String(), field.Kind().String())
 		}
 
-		slice := reflect.MakeSlice(reflect.TypeOf(field.Interface()), len(value.Array), len(value.Array))
-		for i, v := range value.Array {
+		values := value.Array.Values
+		if len(values) == 0 {
+			val, err = nil, nil
+			break
+		}
+
+		slice := reflect.MakeSlice(reflect.TypeOf(field.Interface()), len(values), len(values))
+		for i, v := range values {
 			item := slice.Index(i)
 			if err := d.decodeValue(v, item); err != nil {
 				return fmt.Errorf("failed decoding array item at index %d: %w", i, err)
@@ -132,7 +141,6 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 
 	// Struct decoding
 	case len(value.Struct) != 0:
-
 		fieldKind := field.Kind()
 		if fieldKind != reflect.Struct && fieldKind != reflect.Map {
 			return fmt.Errorf(errFormatInvalidFieldTypeOrType, reflect.Struct.String(), reflect.Map.String(), fieldKind.String())
@@ -203,11 +211,27 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 	return nil
 }
 
+func (d *StdDecoder) decodeInt(value string) (int, error) {
+	if value == "" {
+		return 0, nil
+	}
+	return strconv.Atoi(value)
+}
+
+func (d *StdDecoder) decodeDouble(value string) (float64, error) {
+	if value == "" {
+		return 0.0, nil
+	}
+	return strconv.ParseFloat(value, float64BitSize)
+}
+
 func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
 	switch value {
 	case "1", "true", "TRUE", "True":
 		return true, nil
 	case "0", "false", "FALSE", "False":
+		return false, nil
+	case "":
 		return false, nil
 	default:
 		return false, fmt.Errorf("unrecognized value '%s' for boolean", value)
@@ -215,10 +239,16 @@ func (d *StdDecoder) decodeBoolean(value string) (bool, error) {
 }
 
 func (d *StdDecoder) decodeBase64(value string) ([]byte, error) {
+	if value == "" {
+		return nil, nil
+	}
 	return base64.StdEncoding.DecodeString(value)
 }
 
 func (d *StdDecoder) decodeDateTime(value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, nil
+	}
 	return time.Parse(time.RFC3339, value)
 }
 
