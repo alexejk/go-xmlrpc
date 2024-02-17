@@ -69,6 +69,23 @@ Response is decoded following similar rules to argument encoding.
 * Structs may contain pointers - they will be initialized if required.
 * Structs may be parsed as `map[string]any`, in case struct member names are not known at compile time. Map keys are enforced to `string` type.
 
+#### Handling of Empty Values
+
+If XML-RPC response contains no value for well-known data-types, it will be decoded into the default "empty" values as per table below:
+
+| XML-RPC Value           | Default Value |
+|-------------------------|--------------|
+| `<string/>`             | `""` |
+| `<int/>`, `<i4/>`       | `0` |
+| `<boolean/>`            | `false` |
+| `<double/>`             | `0.0` |
+| `<dateTime.iso8601/>`   | `time.Time{}` |
+| `<base64/>`             | `nil` |
+| `<array><data/><array>` | `nil` |
+
+As per XML-RPC specification, `<struct>` may not have an empty list of `<member>` elements, thus no default "empty" value is defined for it.
+Similarly, `<array/>` is considered invalid.
+
 ### Field renaming
 
 XML-RPC specification does not necessarily specify any rules for struct's member names. Some services allow struct member names to include characters not compatible with standard Go field naming.
