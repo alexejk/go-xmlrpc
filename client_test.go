@@ -41,7 +41,7 @@ func TestClient_Call(t *testing.T) {
 		require.Equal(t, 2, len(nameParts))
 		require.Equal(t, "my", nameParts[0], "test server: method should start with 'my.'")
 		require.Equal(t, 1, len(m.Params))
-		require.Equal(t, "12345", m.Params[0].Value.Int)
+		require.Equal(t, "12345", *m.Params[0].Value.Int)
 
 		file := nameParts[1]
 		_, _ = fmt.Fprintln(w, string(loadTestFile(t, fmt.Sprintf("response_%s.xml", file))))

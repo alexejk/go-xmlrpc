@@ -1,3 +1,10 @@
+## 0.5.1
+
+Bugfixes:
+* Handling of empty values while decoding responses (#80).   
+Library will now properly handle empty values for `<string>`, `<int>`, `<i4>`, `<boolean>`, `<double>`, `<dateTime.iso8601>`, `<base64>` and `<array>` (with case of `<data />`). 
+As `<struct>` may not have an empty list of `<member>` elements as per specification. Similarly `<array/>` is considered invalid.
+
 ## 0.5.0
 
 Improvements:

@@ -7,21 +7,20 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestStdDecoder_DecodeRaw(t *testing.T) {
-	tests := []struct {
-		name        string
+	tests := map[string]struct {
 		testFile    string
 		skipUnknown bool
 		v           interface{}
 		expect      interface{}
 		err         error
 	}{
-		{
-			name:     "simple response",
+		"simple response": {
 			testFile: "response_simple.xml",
 			v: &struct {
 				Param string
@@ -35,8 +34,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 				Int:   12345,
 			},
 		},
-		{
-			name:     "array response",
+		"array response": {
 			testFile: "response_array.xml",
 			v: &struct {
 				Ints []int
@@ -49,8 +47,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:     "array response - mixed content",
+		"array response - mixed content": {
 			testFile: "response_array_mixed.xml",
 			v: &struct {
 				Mixed []interface{}
@@ -63,8 +60,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:     "array response - bad param",
+		"array response - bad param": {
 			testFile: "response_array.xml",
 			v: &struct {
 				Ints string // <- This is unexpected type
@@ -72,8 +68,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 			expect: nil,
 			err:    fmt.Errorf(errFormatInvalidFieldType, "slice", "string"),
 		},
-		{
-			name:     "struct response",
+		"struct response": {
 			testFile: "response_struct.xml",
 			v: &struct {
 				Struct struct {
@@ -108,8 +103,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:        "struct response - skip unknown",
+		"struct response - skip unknown": {
 			testFile:    "response_struct.xml",
 			skipUnknown: true,
 			v: &struct {
@@ -141,8 +135,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:     "struct response - bad param",
+		"struct response - bad param": {
 			testFile: "response_struct.xml",
 			v: &struct {
 				Struct string // <- This is unexpected type
@@ -150,10 +143,94 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 			expect: nil,
 			err:    fmt.Errorf(errFormatInvalidFieldTypeOrType, "struct", "map", "string"),
 		},
+		"struct response empty values (explicit)": {
+			testFile: "response_struct_empty_values.xml",
+			v: &struct {
+				Struct struct {
+					EmptyString  string
+					EmptyInt     int
+					EmptyInt4    int
+					EmptyDouble  int
+					EmptyBoolean bool
+					EmptyDate    time.Time
+					EmptyBase64  []byte
+					EmptyArray   []any
+				}
+			}{},
+			expect: &struct {
+				Struct struct {
+					EmptyString  string
+					EmptyInt     int
+					EmptyInt4    int
+					EmptyDouble  int
+					EmptyBoolean bool
+					EmptyDate    time.Time
+					EmptyBase64  []byte
+					EmptyArray   []any
+				}
+			}{
+				Struct: struct {
+					EmptyString  string
+					EmptyInt     int
+					EmptyInt4    int
+					EmptyDouble  int
+					EmptyBoolean bool
+					EmptyDate    time.Time
+					EmptyBase64  []byte
+					EmptyArray   []any
+				}{
+					EmptyString: ``,
+					EmptyInt:    0,
+					EmptyInt4:   0,
+					EmptyDouble: 0,
+					EmptyDate:   time.Time{},
+					EmptyBase64: nil,
+					EmptyArray:  nil,
+				},
+			},
+		},
+		"struct response empty values (implicit)": {
+			testFile: "response_struct_empty_values.xml",
+			v: &struct {
+				Struct struct {
+					EmptyString  string
+					EmptyInt     int
+					EmptyInt4    int
+					EmptyDouble  int
+					EmptyBoolean bool
+					EmptyDate    time.Time
+					EmptyBase64  []byte
+					EmptyArray   []any
+				}
+			}{},
+			expect: &struct {
+				Struct struct {
+					EmptyString  string
+					EmptyInt     int
+					EmptyInt4    int
+					EmptyDouble  int
+					EmptyBoolean bool
+					EmptyDate    time.Time
+					EmptyBase64  []byte
+					EmptyArray   []any
+				}
+			}{
+				Struct: struct {
+					EmptyString  string
+					EmptyInt     int
+					EmptyInt4    int
+					EmptyDouble  int
+					EmptyBoolean bool
+					EmptyDate    time.Time
+					EmptyBase64  []byte
+					EmptyArray   []any
+				}{},
+			},
+		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for tName, tt := range tests {
+		t.Run(tName, func(t *testing.T) {
 			dec := &StdDecoder{}
 			dec.skipUnknownFields = tt.skipUnknown
 			err := dec.DecodeRaw(loadTestFile(t, tt.testFile), tt.v)

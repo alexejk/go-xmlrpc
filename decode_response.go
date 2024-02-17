@@ -28,15 +28,15 @@ type ResponseParam struct {
 // ResponseValue encapsulates one of the data types for each parameter.
 // Only one field should be set.
 type ResponseValue struct {
-	Array    []*ResponseValue        `xml:"array>data>value"`
+	Array    *ResponseArrayData      `xml:"array>data"`
 	Struct   []*ResponseStructMember `xml:"struct>member"`
-	String   string                  `xml:"string"`
-	Int      string                  `xml:"int"`
-	Int4     string                  `xml:"i4"`
-	Double   string                  `xml:"double"`
-	Boolean  string                  `xml:"boolean"`
-	DateTime string                  `xml:"dateTime.iso8601"`
-	Base64   string                  `xml:"base64"`
+	String   *string                 `xml:"string"`
+	Int      *string                 `xml:"int"`
+	Int4     *string                 `xml:"i4"`
+	Double   *string                 `xml:"double"`
+	Boolean  *string                 `xml:"boolean"`
+	DateTime *string                 `xml:"dateTime.iso8601"`
+	Base64   *string                 `xml:"base64"`
 
 	RawXML string `xml:",innerxml"`
 }
@@ -45,6 +45,11 @@ type ResponseValue struct {
 type ResponseStructMember struct {
 	Name  string        `xml:"name"`
 	Value ResponseValue `xml:"value"`
+}
+
+// ResponseArrayData contains a list of array values
+type ResponseArrayData struct {
+	Values []*ResponseValue `xml:"value"`
 }
 
 // ResponseFault wraps around failure
