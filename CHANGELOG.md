@@ -1,3 +1,9 @@
+## 0.5.2
+
+Bugfixes:
+* Decoding a `<struct>` that is nested in `<array>` with variable types (e.g mix of ints, bool, string and structs) (#84).
+Structs will be decoded into a `map[string]any` type, as it's not possible to decode.
+
 ## 0.5.1
 
 Bugfixes:
