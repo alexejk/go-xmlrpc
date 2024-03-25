@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<methodResponse>
+    <params>
+        <param>
+            <value>
+                <array>
+                    <data>
+                        <value>
+                            <i4>200</i4>
+                        </value>
+                        <value>OK</value>
+                        <value>
+                            <struct>
+                                <member>
+                                    <name>status</name>
+                                    <value>OK</value>
+                                </member>
+                                <member>
+                                    <name>contact</name>
+                                    <value>&lt;sip:raf@192.168.164.128:5060&gt;;expires=60</value>
+                                </member>
+                            </struct>
+                        </value>
+                    </data>
+                </array>
+            </value>
+        </param>
+    </params>
+</methodResponse>

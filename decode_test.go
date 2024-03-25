@@ -622,6 +622,20 @@ func Test_structMemberToFieldName(t *testing.T) {
 	}
 }
 
+func Test_github(t *testing.T) {
+	dec := &StdDecoder{}
+	decodeTarget := struct {
+		Array []any
+	}{}
+
+	err := dec.DecodeRaw(loadTestFile(t, "response_array_mixed_with_struct.xml"), &decodeTarget)
+	require.NoError(t, err)
+	require.Equal(t, 3, len(decodeTarget.Array))
+	require.Equal(t, 200, decodeTarget.Array[0])
+	require.Equal(t, "OK", decodeTarget.Array[1])
+	require.Equal(t, "OK", decodeTarget.Array[2].(map[string]any)["status"])
+}
+
 func loadTestFile(t *testing.T, name string) []byte {
 	path := filepath.Join("testdata", name) // relative path
 

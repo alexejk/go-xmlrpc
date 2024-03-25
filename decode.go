@@ -142,13 +142,24 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 	// Struct decoding
 	case len(value.Struct) != 0:
 		fieldKind := field.Kind()
+		fieldType := field.Type()
+
+		if fieldKind == reflect.Interface {
+			// Create a new map[string]any and assign it to field
+			fieldType = reflect.TypeOf(map[string]any{})
+			fieldKind = reflect.Map
+
+			field.Set(reflect.MakeMap(fieldType))
+			field = field.Elem() // As the field is an interface, need to unwrap it
+		}
+
 		if fieldKind != reflect.Struct && fieldKind != reflect.Map {
 			return fmt.Errorf(errFormatInvalidFieldTypeOrType, reflect.Struct.String(), reflect.Map.String(), fieldKind.String())
 		}
 
 		// If we are targeting a map, it should be initialized
 		if fieldKind == reflect.Map {
-			if kt := field.Type().Key().Kind(); kt != reflect.String {
+			if kt := fieldType.Key().Kind(); kt != reflect.String {
 				return fmt.Errorf(errFormatInvalidMapKeyTypeForStruct, kt.String())
 			}
 
@@ -160,7 +171,7 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 		for _, m := range value.Struct {
 			if fieldKind == reflect.Map {
 				mapKey := reflect.ValueOf(m.Name)
-				f := reflect.New(field.Type().Elem()).Elem()
+				f := reflect.New(fieldType.Elem()).Elem()
 
 				if err := d.decodeValue(&m.Value, f); err != nil {
 					return fmt.Errorf("failed decoding struct member '%s': %w", m.Name, err)
