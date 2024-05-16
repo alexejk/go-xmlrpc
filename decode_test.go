@@ -407,6 +407,13 @@ func TestStdDecoder_DecodeRaw_Arrays(t *testing.T) {
 				Array: []any{0, "4099", "O3D217AC", "<c><b>123</b></c>"},
 			},
 		},
+		// Related to issue #86: https://github.com/alexejk/go-xmlrpc/issues/86
+		"Basic mixed array - with nested mixed array (Github #86)": {
+			testFile: "response_array_mixed_with_array.xml",
+			expect: &TestStruct{
+				Array: []any{10, "s11", true, []any{"Some String"}},
+			},
+		},
 	}
 
 	for name, tt := range tests {

@@ -119,7 +119,18 @@ func (d *StdDecoder) decodeValue(value *ResponseValue, field reflect.Value) erro
 
 	// Array decoding
 	case value.Array != nil:
-		if field.Kind() != reflect.Slice {
+		fieldKind := field.Kind()
+
+		// When dealing with nested arrays of []any type, initial kind for the nested array will be reflect.Interface
+		if fieldKind == reflect.Interface {
+			// Create a new []interface{} and assign it to field
+			fieldType := reflect.SliceOf(reflect.TypeOf((*interface{})(nil)).Elem())
+			fieldKind = reflect.Slice
+
+			field.Set(reflect.MakeSlice(fieldType, 0, 0))
+		}
+
+		if fieldKind != reflect.Slice {
 			return fmt.Errorf(errFormatInvalidFieldType, reflect.Slice.String(), field.Kind().String())
 		}
 
