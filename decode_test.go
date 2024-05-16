@@ -622,7 +622,8 @@ func Test_structMemberToFieldName(t *testing.T) {
 	}
 }
 
-func Test_github(t *testing.T) {
+// Issue: https://github.com/alexejk/go-xmlrpc/issues/84
+func Test_github_84(t *testing.T) {
 	dec := &StdDecoder{}
 	decodeTarget := struct {
 		Array []any
