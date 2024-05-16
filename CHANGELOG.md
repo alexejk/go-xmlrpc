@@ -1,3 +1,10 @@
+## 0.5.3
+
+Bugfixes:
+* Decoding an `<array>` of mixed types that contains another set of nested `<array>` (with equally mixed types) (#86).
+  Outer slice would need to be defined as `[]any` and it's up to the user to cast the inner values (including nested slices) to the desired/expected type.
+
+
 ## 0.5.2
 
 Bugfixes:

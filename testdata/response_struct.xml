@@ -24,6 +24,26 @@
                         <name>2</name>
                         <value><int>3</int></value>
                     </member>
+                    <member>
+                        <name>array</name>
+                        <value>
+                            <array>
+                                <data>
+                                    <value><int>200</int></value>
+                                    <value><string>Some String</string></value>
+                                    <value>
+                                        <array>
+                                            <data>
+                                                <value><string>Nested String</string></value>
+                                                <value><int>10</int></value>
+                                                <value><boolean>1</boolean></value>
+                                            </data>
+                                        </array>
+                                    </value>
+                                </data>
+                            </array>
+                        </value>
+                    </member>
                 </struct>
             </value>
         </param>

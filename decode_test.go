@@ -77,6 +77,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 int
 					Field2       int `xmlrpc:"2"`
+					Array        []any
 				}
 			}{},
 			expect: &struct {
@@ -86,6 +87,7 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 int
 					Field2       int `xmlrpc:"2"`
+					Array        []any
 				}
 			}{
 				Struct: struct {
@@ -94,12 +96,14 @@ func TestStdDecoder_DecodeRaw(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 int
 					Field2       int `xmlrpc:"2"`
+					Array        []any
 				}{
 					Foo:          "bar",
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: 34,
 					Field2:       3,
+					Array:        []any{200, "Some String", []any{"Nested String", 10, true}},
 				},
 			},
 		},
@@ -274,6 +278,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 int
 					Field2       int `xmlrpc:"2"`
+					Array        []any
 				}
 			}{},
 			expect: &struct {
@@ -283,6 +288,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 int
 					Field2       int `xmlrpc:"2"`
+					Array        []any
 				}
 			}{
 				Struct: struct {
@@ -291,12 +297,14 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 int
 					Field2       int `xmlrpc:"2"`
+					Array        []any
 				}{
 					Foo:          "bar",
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: 34,
 					Field2:       3,
+					Array:        []any{200, "Some String", []any{"Nested String", 10, true}},
 				},
 			},
 		},
@@ -310,6 +318,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 *int
 					Field2       *int `xmlrpc:"2"`
+					Array        []any
 				}
 			}{},
 			expect: &struct {
@@ -319,6 +328,7 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 *int
 					Field2       *int `xmlrpc:"2"`
+					Array        []any
 				}
 			}{
 				Struct: &struct {
@@ -327,12 +337,14 @@ func TestStdDecoder_DecodeRaw_StructFields(t *testing.T) {
 					WoBleBobble  bool
 					WoBleBobble2 *int
 					Field2       *int `xmlrpc:"2"`
+					Array        []any
 				}{
 					Foo:          sPtr("bar"),
 					Baz:          2,
 					WoBleBobble:  true,
 					WoBleBobble2: iPtr(34),
 					Field2:       iPtr(3),
+					Array:        []any{200, "Some String", []any{"Nested String", 10, true}},
 				},
 			},
 		},
@@ -407,6 +419,13 @@ func TestStdDecoder_DecodeRaw_Arrays(t *testing.T) {
 				Array: []any{0, "4099", "O3D217AC", "<c><b>123</b></c>"},
 			},
 		},
+		// Related to issue #86: https://github.com/alexejk/go-xmlrpc/issues/86
+		"Basic mixed array - with nested mixed array (Github #86)": {
+			testFile: "response_array_mixed_with_array.xml",
+			expect: &TestStruct{
+				Array: []any{10, "s11", true, []any{"Some String", []any{"Nested String", 10, true}}},
+			},
+		},
 	}
 
 	for name, tt := range tests {
@@ -456,6 +475,7 @@ func TestStdDecoder_DecodeRaw_Struct_Map(t *testing.T) {
 					"woBleBobble":  true,
 					"WoBleBobble2": 34,
 					"2":            3,
+					"array":        []any{200, "Some String", []any{"Nested String", 10, true}},
 				},
 			},
 		},
@@ -622,7 +642,8 @@ func Test_structMemberToFieldName(t *testing.T) {
 	}
 }
 
-func Test_github(t *testing.T) {
+// Issue: https://github.com/alexejk/go-xmlrpc/issues/84
+func Test_github_84(t *testing.T) {
 	dec := &StdDecoder{}
 	decodeTarget := struct {
 		Array []any

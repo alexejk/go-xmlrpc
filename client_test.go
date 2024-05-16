@@ -68,6 +68,88 @@ func TestClient_Call(t *testing.T) {
 	require.Equal(t, 12345, resp.Index)
 }
 
+func TestClient_Github_86(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m := &struct {
+			Name   string           `xml:"methodName"`
+			Params []*ResponseParam `xml:"params>param"`
+		}{}
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err, "test server: read body")
+
+		err = xml.Unmarshal(body, m)
+		require.NoError(t, err, "test server: unmarshal body")
+
+		require.Equal(t, "di", m.Name)
+		require.Equal(t, 3, len(m.Params))
+
+		expected := []string{"abc", "def", "hij"}
+		for i, p := range m.Params {
+			require.Equal(t, expected[i], *p.Value.String)
+		}
+
+		respBody := `<?xml version="1.0"?>
+<methodResponse>
+	<params>
+		<param>
+			<value><string>OK</string></value>
+		</param>
+		<param>
+			<value><int>200</int></value>
+		</param>
+		<param>
+			<value>
+				<array>
+					<data>
+						<value><i4>200</i4></value>
+						<value><array><data><value>Some String</value></data></array></value>
+						<value>Server: Sip Express Media Server (5.1.0 (x86_64/Linux)) calls: 0 active/0 total/0 connect/0 min</value>
+					</data>
+				</array>
+			</value>
+		</param>
+	</params>
+</methodResponse>`
+		_, _ = fmt.Fprintln(w, respBody)
+	}))
+	defer ts.Close()
+
+	c, err := NewClient(ts.URL)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	type DiRequest struct {
+		First  string
+		Second string
+		Third  string
+	}
+
+	type DiResponse struct {
+		Status string
+		Code   int
+		Data   []any
+	}
+
+	req := &DiRequest{
+		First:  "abc",
+		Second: "def",
+		Third:  "hij",
+	}
+	resp := &DiResponse{}
+
+	err = c.Call("di", req, resp)
+	require.NoError(t, err)
+	require.Equal(t, "OK", resp.Status)
+	require.Equal(t, 200, resp.Code)
+
+	// Data array decoding validation
+	require.NotEmpty(t, resp.Data)
+	require.Len(t, resp.Data, 3)
+	require.Equal(t, 200, resp.Data[0].(int))
+	require.Equal(t, []any{"Some String"}, resp.Data[1].([]any))
+	require.Equal(t, "Server: Sip Express Media Server (5.1.0 (x86_64/Linux)) calls: 0 active/0 total/0 connect/0 min", resp.Data[2].(string))
+}
+
 func TestClient_Fault(t *testing.T) {
 	ts := mockupServer(t, "response_fault.xml")
 	defer ts.Close()
