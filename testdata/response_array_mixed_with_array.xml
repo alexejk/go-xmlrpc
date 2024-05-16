@@ -16,6 +16,15 @@ Nested array in the mixed array decoding issue
                             <array>
                                 <data>
                                     <value>Some String</value>
+                                    <value>
+                                        <array>
+                                            <data>
+                                                <value>Nested String</value>
+                                                <value><int>10</int></value>
+                                                <value><boolean>1</boolean></value>
+                                            </data>
+                                        </array>
+                                    </value>
                                 </data>
                             </array>
                         </value>

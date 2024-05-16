@@ -411,7 +411,7 @@ func TestStdDecoder_DecodeRaw_Arrays(t *testing.T) {
 		"Basic mixed array - with nested mixed array (Github #86)": {
 			testFile: "response_array_mixed_with_array.xml",
 			expect: &TestStruct{
-				Array: []any{10, "s11", true, []any{"Some String"}},
+				Array: []any{10, "s11", true, []any{"Some String", []any{"Nested String", 10, true}}},
 			},
 		},
 	}
