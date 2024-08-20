@@ -1,8 +1,8 @@
-FROM golang:1.22-alpine
+FROM golang:1.23-alpine
 
 # Build dependencies
-RUN apk --no-cache update
-RUN apk --no-cache add alpine-sdk
+RUN apk --no-cache update && \
+    apk --no-cache add alpine-sdk curl
 
 WORKDIR /src
 
