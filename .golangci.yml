@@ -38,7 +38,7 @@ linters-settings:
         # don't include the "operation" and "assign"
         checks: argument,case,condition,return
   govet:
-    check-shadowing: false
+    shadow: false
   exhaustive:
     default-signifies-exhaustive: true
   maligned:
@@ -59,7 +59,6 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
     - exhaustive
     - gochecknoinits
     - goconst
