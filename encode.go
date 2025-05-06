@@ -130,6 +130,11 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 			}
 		}
 
+	case reflect.Map:
+		if err := e.encodeMap(w, value); err != nil {
+			return fmt.Errorf("cannot encode map value: %w", err)
+		}
+
 	default:
 		return fmt.Errorf("unsupported type %v", kind)
 	}
@@ -224,4 +229,30 @@ func (e *StdEncoder) encodeBase64(w io.Writer, val []byte) error {
 func (e *StdEncoder) encodeTime(w io.Writer, val time.Time) error {
 	_, err := fmt.Fprintf(w, "<dateTime.iso8601>%s</dateTime.iso8601>", val.Format(time.RFC3339))
 	return err
+}
+
+func (e *StdEncoder) encodeMap(w io.Writer, val interface{}) error {
+	_, _ = fmt.Fprint(w, "<struct>")
+
+	mapValue := reflect.ValueOf(val)
+	iter := mapValue.MapRange()
+
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+
+		// Convert key to string
+		keyStr := fmt.Sprintf("%v", key.Interface())
+
+		_, _ = fmt.Fprintf(w, "<member><name>%s</name>", keyStr)
+
+		if err := e.encodeValue(w, value.Interface()); err != nil {
+			return fmt.Errorf("cannot encode map value for key '%s': %w", keyStr, err)
+		}
+
+		_, _ = fmt.Fprint(w, "</member>")
+	}
+
+	_, _ = fmt.Fprint(w, "</struct>")
+	return nil
 }

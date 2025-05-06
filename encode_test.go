@@ -83,7 +83,8 @@ func TestStdEncoder_Encode(t *testing.T) {
 			},
 			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><boolean>1</boolean></value></param><param><value><boolean>0</boolean></value></param></params></methodCall>`,
 			err:    nil,
-		}, {
+		},
+		{
 			name:       "Numerical args",
 			methodName: "myMethod",
 			args: &struct {
@@ -399,6 +400,100 @@ func Test_encodeTime(t *testing.T) {
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
+		})
+	}
+}
+
+// XMLRPCValue represents a value in XML-RPC format
+type XMLRPCValue struct {
+	Type  string      `xml:"type,attr"`
+	Value interface{} `xml:",chardata"`
+}
+
+// XMLRPCMember represents a member in XML-RPC struct
+type XMLRPCMember struct {
+	Name  string      `xml:"name"`
+	Value XMLRPCValue `xml:"value"`
+}
+
+// XMLRPCStruct represents an XML-RPC struct
+type XMLRPCStruct struct {
+	Members []XMLRPCMember `xml:"member"`
+}
+
+func Test_encodeMap(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  interface{}
+		expect []string // List of XML fragments that should be present
+		err    error
+	}{
+		{
+			name:   "empty map",
+			input:  map[string]interface{}{},
+			expect: []string{"<struct></struct>"},
+			err:    nil,
+		},
+		{
+			name: "map with basic types",
+			input: map[string]interface{}{
+				"string": "value",
+				"int":    42,
+				"bool":   true,
+				"float":  3.14,
+			},
+			expect: []string{
+				"<member><name>string</name><value><string>value</string></value></member>",
+				"<member><name>int</name><value><int>42</int></value></member>",
+				"<member><name>bool</name><value><boolean>1</boolean></value></member>",
+				"<member><name>float</name><value><double>3.140000</double></value></member>",
+			},
+			err: nil,
+		},
+		{
+			name: "map with nested structures",
+			input: map[string]interface{}{
+				"nested": map[string]interface{}{
+					"key": "value",
+				},
+				"array": []string{"a", "b", "c"},
+			},
+			expect: []string{
+				"<member><name>nested</name><value><struct><member><name>key</name><value><string>value</string></value></member></struct></value></member>",
+				"<member><name>array</name><value><array><data><value><string>a</string></value><value><string>b</string></value><value><string>c</string></value></data></array></value></member>",
+			},
+			err: nil,
+		},
+		{
+			name: "map with non-string keys",
+			input: map[int]string{
+				1: "one",
+				2: "two",
+			},
+			expect: []string{
+				"<member><name>1</name><value><string>one</string></value></member>",
+				"<member><name>2</name><value><string>two</string></value></member>",
+			},
+			err: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := new(strings.Builder)
+			enc := &StdEncoder{}
+			err := enc.encodeMap(buf, tt.input)
+			require.Equal(t, tt.err, err)
+
+			output := buf.String()
+			// Verify that the output starts with <struct> and ends with </struct>
+			require.True(t, strings.HasPrefix(output, "<struct>"))
+			require.True(t, strings.HasSuffix(output, "</struct>"))
+
+			// Check that each expected XML fragment is present in the output
+			for _, expected := range tt.expect {
+				require.Contains(t, output, expected)
+			}
 		})
 	}
 }
