@@ -1,3 +1,10 @@
+## 0.6.0
+
+Improvements:
+
+* Ability to use `map[string]any` as a type for encoding XML-RPC `<struct>` (#92 with original contribution from @gustavs ).
+* Ability to use a shortcut argument by passing `map[string]any` without wrapping it in a `struct{}` when a single argument of type `<struct>` is expected.
+
 ## 0.5.3
 
 Bugfixes:
