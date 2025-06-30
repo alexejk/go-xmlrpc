@@ -1,6 +1,7 @@
 package xmlrpc
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -9,70 +10,120 @@ import (
 )
 
 func TestStdEncoder_Encode(t *testing.T) {
+	const ParamsPrefix = "<params>"
+	const ParamsSuffix = "</params>"
+
+	// methodBodyValidator is a function type that can be used to ensure the body of the method parameters is up to spec.
+	type methodBodyValidator func(body string) error
+
+	// noParamsValidator checks if the parameter body is empty, which is expected when no parameters are provided.
+	noParamsValidator := func(body string) error {
+		if body != "" {
+			return fmt.Errorf("expected no params, got %s", body)
+		}
+		return nil
+	}
+
+	// exactParamsValidator checks if the parameter body matches the expected XML structure.
+	// It will look for data within <params> tags.
+	exactParamsValidator := func(expectation string) func(body string) error {
+		return func(body string) error {
+			body = strings.TrimSpace(body)
+			if !strings.HasPrefix(body, ParamsPrefix) || !strings.HasSuffix(body, ParamsSuffix) {
+				return fmt.Errorf("expected params body to start with <params> and end with </params>, got %s", body)
+			}
+
+			remainingBody := body[len(ParamsPrefix) : len(body)-len(ParamsSuffix)]
+			if remainingBody != expectation {
+				return fmt.Errorf("expected params body %s, got %s", expectation, remainingBody)
+			}
+			return nil
+		}
+	}
+
+	// structParamWithMembersValidator checks if the parameter body contains a single struct with specific members.
+	// It will look for <member> tags within the <params><param><struct> tree of tag.
+	// Validation will check for the presence of only expected members and no others - if unexpected members are present, it will return an error.
+	structParamWithMembersValidator := func(expectedMembers []string) func(body string) error {
+		return func(body string) error {
+			body = strings.TrimSpace(body)
+
+			StructParamPrefix := fmt.Sprintf("%s<param><value><struct>", ParamsPrefix)
+			StructParamSuffix := fmt.Sprintf("</struct></value></param>%s", ParamsSuffix)
+
+			if !strings.HasPrefix(body, StructParamPrefix) || !strings.HasSuffix(body, StructParamSuffix) {
+				return fmt.Errorf("expected params body to contain a single struct, got %s", body)
+			}
+
+			remainingBody := body[len(StructParamPrefix) : len(body)-len(StructParamSuffix)]
+
+			for _, exp := range expectedMembers {
+				if !strings.Contains(remainingBody, exp) {
+					return fmt.Errorf("expected params body to contain %s", exp)
+				}
+				// removing the validated part from the remaining body
+				remainingBody = strings.Replace(remainingBody, exp, "", 1)
+			}
+
+			if strings.TrimSpace(remainingBody) != "" {
+				return fmt.Errorf("expected only provided members to exist, got remainder body %q", remainingBody)
+			}
+			return nil
+		}
+	}
+
 	tests := []struct {
-		name       string
-		methodName string
-		args       interface{}
-		expect     string
-		err        error
+		name   string
+		args   interface{}
+		expect string
+		err    string
+
+		paramValidator methodBodyValidator
 	}{
 		{
-			name:       "No args",
-			methodName: "myMethod",
-			args:       nil,
-			expect:     `<methodCall><methodName>myMethod</methodName></methodCall>`,
-			err:        nil,
+			name:           "No args",
+			args:           nil,
+			paramValidator: noParamsValidator,
 		},
 		{
-			name:       "Args empty struct as pointer",
-			methodName: "myMethod",
-			args:       &struct{}{},
-			expect:     `<methodCall><methodName>myMethod</methodName></methodCall>`,
-			err:        nil,
+			name:           "Args empty struct as pointer",
+			args:           &struct{}{},
+			paramValidator: noParamsValidator,
 		},
 		{
-			name:       "Args empty struct as value",
-			methodName: "myMethod",
-			args:       struct{}{},
-			expect:     `<methodCall><methodName>myMethod</methodName></methodCall>`,
-			err:        nil,
+			name:           "Args empty struct as value",
+			args:           struct{}{},
+			paramValidator: noParamsValidator,
 		},
 		{
-			name:       "Args as pointer",
-			methodName: "myMethod",
+			name: "Args as pointer",
 			args: &struct {
 				String string
 			}{
 				String: "my-name",
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><string>my-name</string></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: exactParamsValidator(`<param><value><string>my-name</string></value></param>`),
 		},
 		{
-			name:       "Args as value",
-			methodName: "myMethod",
+			name: "Args as value",
 			args: struct {
 				String string
 			}{
 				String: "my-name",
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><string>my-name</string></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: exactParamsValidator(`<param><value><string>my-name</string></value></param>`),
 		},
 		{
-			name:       "Args with unexported fields",
-			methodName: "myMethod",
+			name: "Args with unexported fields",
 			args: struct {
 				smthUnexported string
 			}{
 				smthUnexported: "i-am-unexported",
 			},
-			expect: `<methodCall><methodName>myMethod</methodName></methodCall>`,
-			err:    nil,
+			paramValidator: noParamsValidator,
 		},
 		{
-			name:       "Boolean args",
-			methodName: "myMethod",
+			name: "Boolean args",
 			args: &struct {
 				BooleanTrue  bool
 				BooleanFalse bool
@@ -81,12 +132,10 @@ func TestStdEncoder_Encode(t *testing.T) {
 				BooleanFalse: false,
 				BooleanTrue:  true,
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><boolean>1</boolean></value></param><param><value><boolean>0</boolean></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: exactParamsValidator(`<param><value><boolean>1</boolean></value></param><param><value><boolean>0</boolean></value></param>`),
 		},
 		{
-			name:       "Numerical args",
-			methodName: "myMethod",
+			name: "Numerical args",
 			args: &struct {
 				Int    int
 				Double float64
@@ -94,34 +143,28 @@ func TestStdEncoder_Encode(t *testing.T) {
 				Int:    123,
 				Double: float64(12345),
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><int>123</int></value></param><param><value><double>12345.000000</double></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: exactParamsValidator(`<param><value><int>123</int></value></param><param><value><double>12345.000000</double></value></param>`),
 		},
 		{
-			name:       "String arg - simple",
-			methodName: "myMethod",
+			name: "String arg - simple",
 			args: &struct {
 				String string
 			}{
 				String: "my-name",
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><string>my-name</string></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: exactParamsValidator(`<param><value><string>my-name</string></value></param>`),
 		},
 		{
-			name:       "String arg - encoded",
-			methodName: "myMethod",
+			name: "String arg - encoded",
 			args: &struct {
 				String string
 			}{
 				String: `<div class="whitespace">&nbsp;</div>`,
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><string>&lt;div class=&#34;whitespace&#34;&gt;&amp;nbsp;&lt;/div&gt;</string></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: exactParamsValidator(`<param><value><string>&lt;div class=&#34;whitespace&#34;&gt;&amp;nbsp;&lt;/div&gt;</string></value></param>`),
 		},
 		{
-			name:       "Struct args - encoded",
-			methodName: "myMethod",
+			name: "Struct args - encoded",
 			args: &struct {
 				MyStruct struct {
 					String string
@@ -133,12 +176,12 @@ func TestStdEncoder_Encode(t *testing.T) {
 					String: "foo",
 				},
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><struct><member><name>String</name><value><string>foo</string></value></member></struct></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: structParamWithMembersValidator([]string{
+				`<member><name>String</name><value><string>foo</string></value></member>`,
+			}),
 		},
 		{
-			name:       "Struct args renamed - encoded",
-			methodName: "myMethod",
+			name: "Struct args renamed - encoded",
 			args: &struct {
 				MyStruct struct {
 					String string `xmlrpc:"2-.Arg"`
@@ -150,18 +193,74 @@ func TestStdEncoder_Encode(t *testing.T) {
 					String: "foo",
 				},
 			},
-			expect: `<methodCall><methodName>myMethod</methodName><params><param><value><struct><member><name>2-.Arg</name><value><string>foo</string></value></member></struct></value></param></params></methodCall>`,
-			err:    nil,
+			paramValidator: structParamWithMembersValidator([]string{
+				`<member><name>2-.Arg</name><value><string>foo</string></value></member>`,
+			}),
+		},
+		{
+			name: "Map-based argument of a struct",
+			args: &struct {
+				MyMap map[string]interface{}
+			}{
+				MyMap: map[string]any{
+					"foo": "bar",
+					"baz": 123,
+				},
+			},
+			paramValidator: structParamWithMembersValidator([]string{
+				`<member><name>foo</name><value><string>bar</string></value></member>`,
+				`<member><name>baz</name><value><int>123</int></value></member>`,
+			}),
+		},
+		{
+			name: "Map-based argument without struct wrapper",
+			args: map[string]any{
+				"foo": "bar2",
+				"baz": 123,
+			},
+			paramValidator: structParamWithMembersValidator([]string{
+				`<member><name>foo</name><value><string>bar2</string></value></member>`,
+				`<member><name>baz</name><value><int>123</int></value></member>`,
+			}),
+		},
+		{
+			name: "Map-based argument without struct wrapper - bad key type",
+			args: map[int]any{
+				123: "bar2",
+				234: 123,
+			},
+			err: "unsupported type int for bare map key, only string keys are supported",
+		},
+		{
+			name: "Unsupported argument type",
+			args: 123,
+			err:  "unsupported argument type int",
 		},
 	}
+
+	const MethodPrefix = "<methodCall><methodName>myMethod</methodName>"
+	const MethodSuffix = "</methodCall>"
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.Encode(buf, tt.methodName, tt.args)
-			require.Equal(t, tt.expect, buf.String())
-			require.Equal(t, tt.err, err)
+			err := enc.Encode(buf, "myMethod", tt.args)
+
+			if tt.err != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+			output := buf.String()
+			require.True(t, strings.HasPrefix(output, MethodPrefix))
+			require.True(t, strings.HasSuffix(output, MethodSuffix))
+
+			body := output[len(MethodPrefix) : len(output)-len(MethodSuffix)]
+
+			require.NoError(t, tt.paramValidator(body))
 		})
 	}
 }
@@ -402,23 +501,6 @@ func Test_encodeTime(t *testing.T) {
 			require.Equal(t, tt.expect, buf.String())
 		})
 	}
-}
-
-// XMLRPCValue represents a value in XML-RPC format
-type XMLRPCValue struct {
-	Type  string      `xml:"type,attr"`
-	Value interface{} `xml:",chardata"`
-}
-
-// XMLRPCMember represents a member in XML-RPC struct
-type XMLRPCMember struct {
-	Name  string      `xml:"name"`
-	Value XMLRPCValue `xml:"value"`
-}
-
-// XMLRPCStruct represents an XML-RPC struct
-type XMLRPCStruct struct {
-	Members []XMLRPCMember `xml:"member"`
 }
 
 func Test_encodeMap(t *testing.T) {
