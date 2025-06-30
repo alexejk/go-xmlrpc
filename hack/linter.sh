@@ -24,7 +24,7 @@ if [[ ! -f $LINTER_EXEC ]]; then
 fi
 
 if [[ "$CI" == "true" ]]; then
-    $LINTER_EXEC run --out-format checkstyle ./... > build/report.xml
+    $LINTER_EXEC run --output.checkstyle.path build/report.xml ./...
 else
     $LINTER_EXEC run ./...
 fi
