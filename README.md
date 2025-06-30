@@ -59,6 +59,15 @@ Arguments to the remote RPC method are passed on as a `*struct`. This struct is 
 * Order of fields in struct type matters - fields are taken in the order they are defined on the **type**.
 * Numbers are to be specified as `int` (encoded as `<int>`) or `float64` (encoded as `<double>`)
 * Both pointer and value references are accepted (pointers are followed to actual values)
+* `map[string]any` types are accepted and encoded into `<struct>`
+
+**Shortcut:**  
+If a single `<struct>` argument is expected for the RPC method call, it is sometimes more convenient to pass a `map[string]any` as an argument without wrapping into `struct{}`. This `map[string]any` will be encoded into a single `<struct>` argument with `<member>` elements for each key-value pair.
+No other key types are supported and neither is it possible to apply this approach with multiple arguments (or other types).
+
+**Order preservation:**  
+As per XML-RPC specification, the order of `<member>` elements in `<struct>` is not defined. When using maps, order of members in a struct is undeterministic, thus it is not guaranteed that the order of `<member>` elements will match the order of keys in the map (due to Go not preserving the order of keys).
+To preserve the order, use a struct type with fields defined in the desired order (order is inherited from the struct type itself, not the instance).
 
 ### Response decoding
 
