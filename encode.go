@@ -34,36 +34,60 @@ func (e *StdEncoder) Encode(w io.Writer, methodName string, args interface{}) er
 func (e *StdEncoder) encodeArgs(w io.Writer, args interface{}) error {
 	// Allows reading both pointer and value-structs
 	elem := reflect.Indirect(reflect.ValueOf(args))
+
+	switch elem.Kind() {
+	case reflect.Map:
+		return e.encodeBareMapArgs(w, elem)
+	case reflect.Struct:
+		return e.encodeStructArgs(w, elem)
+	default:
+		return fmt.Errorf("unsupported argument type %s - use stuct{} wrapper with exported fields (or map[string]{} if single <struct> param is expected) ", elem.Kind().String())
+	}
+}
+
+func (e *StdEncoder) encodeStructArgs(w io.Writer, elem reflect.Value) error {
 	numFields := elem.NumField()
-
-	if numFields > 0 {
-		hasExportedFields := false
-
-		for fN := 0; fN < numFields; fN++ {
-			field := elem.Field(fN)
-			if !field.CanInterface() {
-				continue
-			}
-
-			// If this is first exported field - print out <params> tag
-			if !hasExportedFields {
-				hasExportedFields = true
-				_, _ = fmt.Fprint(w, "<params>")
-			}
-
-			_, _ = fmt.Fprint(w, "<param>")
-			if err := e.encodeValue(w, field.Interface()); err != nil {
-				return fmt.Errorf("cannot encode argument '%s': %w", elem.Type().Field(fN).Name, err)
-			}
-			_, _ = fmt.Fprint(w, "</param>")
-		}
-
-		// Only write closing </params> tag if at least one exported field is found
-		if hasExportedFields {
-			_, _ = fmt.Fprint(w, "</params>")
-		}
+	if numFields == 0 {
+		return nil
 	}
 
+	hasExportedFields := false
+	for fN := 0; fN < numFields; fN++ {
+		field := elem.Field(fN)
+		if !field.CanInterface() {
+			continue
+		}
+
+		// If this is first exported field - print out <params> tag
+		if !hasExportedFields {
+			hasExportedFields = true
+			_, _ = fmt.Fprint(w, "<params>")
+		}
+
+		_, _ = fmt.Fprint(w, "<param>")
+		if err := e.encodeValue(w, field.Interface()); err != nil {
+			return fmt.Errorf("cannot encode argument '%s': %w", elem.Type().Field(fN).Name, err)
+		}
+		_, _ = fmt.Fprint(w, "</param>")
+	}
+
+	// Only write closing </params> tag if at least one exported field is found
+	if hasExportedFields {
+		_, _ = fmt.Fprint(w, "</params>")
+	}
+
+	return nil
+}
+
+func (e *StdEncoder) encodeBareMapArgs(w io.Writer, elem reflect.Value) error {
+	if elem.Type().Key().Kind() != reflect.String {
+		return fmt.Errorf("unsupported type %s for bare map key, only string keys are supported", elem.Type().Key().Kind().String())
+	}
+	_, _ = fmt.Fprint(w, "<params><param>")
+	if err := e.encodeValue(w, elem.Interface()); err != nil {
+		return fmt.Errorf("cannot encode bare map argument: %w", err)
+	}
+	_, _ = fmt.Fprint(w, "</param></params>")
 	return nil
 }
 
@@ -128,6 +152,11 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 			if err := e.encodeTime(w, value.(time.Time)); err != nil {
 				return fmt.Errorf("cannot encode time.Time value: %w", err)
 			}
+		}
+
+	case reflect.Map:
+		if err := e.encodeMap(w, value); err != nil {
+			return fmt.Errorf("cannot encode map value: %w", err)
 		}
 
 	default:
@@ -224,4 +253,30 @@ func (e *StdEncoder) encodeBase64(w io.Writer, val []byte) error {
 func (e *StdEncoder) encodeTime(w io.Writer, val time.Time) error {
 	_, err := fmt.Fprintf(w, "<dateTime.iso8601>%s</dateTime.iso8601>", val.Format(time.RFC3339))
 	return err
+}
+
+func (e *StdEncoder) encodeMap(w io.Writer, val interface{}) error {
+	_, _ = fmt.Fprint(w, "<struct>")
+
+	mapValue := reflect.ValueOf(val)
+	iter := mapValue.MapRange()
+
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+
+		// Convert key to string
+		keyStr := fmt.Sprintf("%v", key.Interface())
+
+		_, _ = fmt.Fprintf(w, "<member><name>%s</name>", keyStr)
+
+		if err := e.encodeValue(w, value.Interface()); err != nil {
+			return fmt.Errorf("cannot encode map value for key '%s': %w", keyStr, err)
+		}
+
+		_, _ = fmt.Fprint(w, "</member>")
+	}
+
+	_, _ = fmt.Fprint(w, "</struct>")
+	return nil
 }
