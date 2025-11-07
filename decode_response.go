@@ -1,6 +1,11 @@
 package xmlrpc
 
-import "encoding/xml"
+import (
+	"bytes"
+	"encoding/xml"
+
+	"golang.org/x/net/html/charset"
+)
 
 // Response is the basic parsed object of the XML-RPC response body.
 // While it's not convenient to use this object directly - it contains all the information needed to unmarshal into other data-types.
@@ -13,7 +18,9 @@ type Response struct {
 // It relies on XML Unmarshaler and if it fails - error is returned.
 func NewResponse(body []byte) (*Response, error) {
 	response := &Response{}
-	if err := xml.Unmarshal(body, response); err != nil {
+	dec := xml.NewDecoder(bytes.NewReader(body))
+	dec.CharsetReader = charset.NewReaderLabel
+	if err := dec.Decode(response); err != nil {
 		return nil, err
 	}
 
