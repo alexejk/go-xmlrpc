@@ -49,7 +49,7 @@ build:
 .PHONY: docker
 docker:
 # Build a new image (delete old one)
-	docker build --force-rm --build-arg GOPROXY --build-arg CI -t $(BINARY_NAME) .
+	docker build --force-rm --build-arg GOPROXY --build-arg CI -t $(BINARY_NAME) --load .
 
 .PHONY: build-in-docker
 build-in-docker: docker
