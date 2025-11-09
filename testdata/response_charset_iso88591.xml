@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<methodResponse>
+    <params>
+        <param>
+            <value><string>ISO-8859-1 chars: café résumé ñoño</string></value>
+        </param>
+        <param>
+            <value><int>123</int></value>
+        </param>
+    </params>
+</methodResponse>

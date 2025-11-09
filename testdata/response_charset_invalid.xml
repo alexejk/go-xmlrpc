@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="BOGUS-CHARSET-9999"?>
+<methodResponse>
+    <params>
+        <param>
+            <value><string>This should fail</string></value>
+        </param>
+    </params>
+</methodResponse>

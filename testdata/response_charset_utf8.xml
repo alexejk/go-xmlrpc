@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodResponse>
+    <params>
+        <param>
+            <value><string>Hello UTF-8: café résumé</string></value>
+        </param>
+        <param>
+            <value><int>42</int></value>
+        </param>
+    </params>
+</methodResponse>
