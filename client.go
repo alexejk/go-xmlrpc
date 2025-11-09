@@ -39,6 +39,7 @@ func NewClient(endpoint string, opts ...Option) (*Client, error) {
 
 // NewCustomClient allows customization of http.Client used to make RPC calls.
 // If provided endpoint is not valid, an error is returned.
+//
 // Deprecated: prefer using NewClient with HttpClient Option
 func NewCustomClient(endpoint string, httpClient *http.Client) (*Client, error) {
 	return NewClient(endpoint, HttpClient(httpClient))
