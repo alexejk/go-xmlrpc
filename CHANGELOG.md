@@ -1,3 +1,8 @@
+## 0.7.0
+
+Improvements:
+* Support for character encodings beyond UTF-8 in XML-RPC responses (#97 with original contribution from @daveilers)
+
 ## 0.6.0
 
 Improvements:
@@ -54,7 +59,7 @@ Improvements:
 
 * Fixes go routine leak that is caused by `Codec` (#52)
 * A bit more robust tests that do not call remote systems
-* House keeping: dependency updates, no longer using deprecated methods in Go, making linter happier..
+* House keeping: dependency updates, no longer using deprecated methods in Go, making linter happier.
 
 Library is now built against Go 1.18
 

@@ -78,6 +78,14 @@ Response is decoded following similar rules to argument encoding.
 * Structs may contain pointers - they will be initialized if required.
 * Structs may be parsed as `map[string]any`, in case struct member names are not known at compile time. Map keys are enforced to `string` type.
 
+#### Character Encoding Support
+
+The library automatically detects and handles character encodings in XML-RPC responses beyond UTF-8, including ISO-8859-1, Windows-1252, and other charsets commonly found in legacy XML-RPC services.
+
+Character encoding is automatically detected from the XML declaration (e.g., `<?xml version="1.0" encoding="ISO-8859-1"?>`), and the response is transparently converted to UTF-8 for Go string handling. This enables seamless interoperability with XML-RPC servers that don't use UTF-8 encoding.
+
+**Note:** This feature relies on the `golang.org/x/net/html/charset` package.
+
 #### Handling of Empty Values
 
 If XML-RPC response contains no value for well-known data-types, it will be decoded into the default "empty" values as per table below:

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<methodResponse>
+    <params>
+        <param>
+            <value><string>Win-1252 chars: café résumé €uro</string></value>
+        </param>
+        <param>
+            <value><int>456</int></value>
+        </param>
+    </params>
+</methodResponse>
