@@ -1,3 +1,8 @@
+## 0.7.1
+
+Bugfixes:
+* Go toolchain version rolled back to 1.21 (down from 1.25 introduced in 0.7.0 release).
+
 ## 0.7.0
 
 Improvements:
