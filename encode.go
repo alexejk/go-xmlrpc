@@ -4,8 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -138,7 +140,9 @@ func (e *StdEncoder) encodeValue(x *xmlWriter, value interface{}) error {
 		e.encodeInteger(x, value.(int))
 
 	case reflect.Float64:
-		e.encodeDouble(x, value.(float64))
+		if err := e.encodeDouble(x, value.(float64)); err != nil {
+			return fmt.Errorf("cannot encode double value: %w", err)
+		}
 
 	case reflect.String:
 		e.encodeString(x, value.(string))
@@ -186,8 +190,33 @@ func (e *StdEncoder) encodeInteger(x *xmlWriter, val int) {
 	x.element("int", strconv.Itoa(val))
 }
 
-func (e *StdEncoder) encodeDouble(x *xmlWriter, val float64) {
-	x.element("double", fmt.Sprintf("%f", val))
+func (e *StdEncoder) encodeDouble(x *xmlWriter, val float64) error {
+	// XML-RPC has no representation for these, and emitting them produces a document the
+	// receiver cannot interpret as a number
+	if math.IsNaN(val) {
+		return fmt.Errorf("unsupported value NaN")
+	}
+
+	if math.IsInf(val, 1) {
+		return fmt.Errorf("unsupported value +Inf")
+	}
+
+	if math.IsInf(val, -1) {
+		return fmt.Errorf("unsupported value -Inf")
+	}
+
+	// The specification allows only decimal point notation - no exponent - so 'f' is used
+	// with a precision of -1, giving the fewest digits that still round-trip exactly
+	formatted := strconv.FormatFloat(val, 'f', -1, 64)
+
+	// A whole number formats without a period, which the grammar does not allow
+	if !strings.ContainsRune(formatted, '.') {
+		formatted += ".0"
+	}
+
+	x.element("double", formatted)
+
+	return nil
 }
 
 func (e *StdEncoder) encodeBoolean(x *xmlWriter, val bool) {
