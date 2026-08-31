@@ -14,6 +14,38 @@ on:
       - master
 
 jobs:
+  # Compatibility across the supported Go range: the minimum declared in go.mod, and
+  # the versions in use. GOTOOLCHAIN=local keeps a job on the version it selected, so
+  # raising the floor in go.mod fails here instead of silently downloading a newer one.
+  test:
+    name: Test on Go ${{ matrix.go }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.21', '1.25', '1.27']
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -count=1 ./...
+
+      # The Docker build cannot do this - the race detector needs cgo and that build
+      # sets CGO_ENABLED=0
+      - name: Test with race detector
+        run: go test -count=1 -race ./...
+
   build:
     name: Build on push
     runs-on: ubuntu-latest
