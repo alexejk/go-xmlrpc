@@ -18,5 +18,8 @@
 //
 // Additional customizations, such as setting custom headers, changing User-Agent or modifying HTTP Client used to make calls,
 // pass corresponding Options to NewClient function.
+//
+// Servers vary in how they represent the dateTime.iso8601 type. Use the TimeFormat Option with a
+// LayoutTimeFormatter (or a custom TimeFormatter) to control how time.Time values are encoded and decoded.
 
 package xmlrpc
