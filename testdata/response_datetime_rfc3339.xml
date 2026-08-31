@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<methodResponse>
+    <params>
+        <param>
+            <value><dateTime.iso8601>2019-10-11T13:40:30Z</dateTime.iso8601></value>
+        </param>
+    </params>
+</methodResponse>
