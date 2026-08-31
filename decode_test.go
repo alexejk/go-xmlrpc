@@ -667,3 +667,56 @@ func loadTestFile(t *testing.T, name string) []byte {
 
 	return bytes
 }
+
+func Test_decodeDateTime_withTimeFormatter(t *testing.T) {
+	tests := []struct {
+		name      string
+		decoder   *StdDecoder
+		input     string
+		expect    string
+		expectErr bool
+	}{
+		{
+			name:    "unset formatter retains RFC3339",
+			decoder: &StdDecoder{},
+			input:   "2019-10-11T13:40:30Z",
+			expect:  "2019-10-11T13:40:30Z",
+		},
+		{
+			name:      "unset formatter rejects compact form",
+			decoder:   &StdDecoder{},
+			input:     "20191011T13:40:30",
+			expectErr: true,
+		},
+		{
+			name: "custom formatter",
+			decoder: &StdDecoder{
+				timeFormatter: &LayoutTimeFormatter{FormatLayout: LayoutISO8601Compact},
+			},
+			input:  "20191011T13:40:30",
+			expect: "2019-10-11T13:40:30Z",
+		},
+		{
+			name: "empty value decodes to zero time regardless of formatter",
+			decoder: &StdDecoder{
+				timeFormatter: &LayoutTimeFormatter{FormatLayout: LayoutISO8601Compact},
+			},
+			input:  "",
+			expect: "0001-01-01T00:00:00Z",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.decoder.decodeDateTime(tt.input)
+			if tt.expectErr {
+				require.Error(t, err)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expect, got.Format(time.RFC3339))
+		})
+	}
+}
