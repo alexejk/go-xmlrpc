@@ -2,10 +2,10 @@ package xmlrpc
 
 import (
 	"encoding/base64"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -21,34 +21,42 @@ type StdEncoder struct {
 }
 
 func (e *StdEncoder) Encode(w io.Writer, methodName string, args interface{}) error {
-	_, _ = fmt.Fprintf(w, "<methodCall><methodName>%s</methodName>", methodName)
+	x := newXMLWriter(w)
+
+	x.raw("<methodCall>")
+	x.element("methodName", methodName)
 
 	if args != nil {
-		if err := e.encodeArgs(w, args); err != nil {
+		if err := e.encodeArgs(x, args); err != nil {
+			// A failed write is the root cause and outranks whatever it caused downstream
+			if x.err != nil {
+				return x.err
+			}
+
 			return fmt.Errorf("cannot encoded provided method arguments: %w", err)
 		}
 	}
 
-	_, _ = fmt.Fprint(w, "</methodCall>")
+	x.raw("</methodCall>")
 
-	return nil
+	return x.err
 }
 
-func (e *StdEncoder) encodeArgs(w io.Writer, args interface{}) error {
+func (e *StdEncoder) encodeArgs(x *xmlWriter, args interface{}) error {
 	// Allows reading both pointer and value-structs
 	elem := reflect.Indirect(reflect.ValueOf(args))
 
 	switch elem.Kind() {
 	case reflect.Map:
-		return e.encodeBareMapArgs(w, elem)
+		return e.encodeBareMapArgs(x, elem)
 	case reflect.Struct:
-		return e.encodeStructArgs(w, elem)
+		return e.encodeStructArgs(x, elem)
 	default:
 		return fmt.Errorf("unsupported argument type %s - use stuct{} wrapper with exported fields (or map[string]{} if single <struct> param is expected) ", elem.Kind().String())
 	}
 }
 
-func (e *StdEncoder) encodeStructArgs(w io.Writer, elem reflect.Value) error {
+func (e *StdEncoder) encodeStructArgs(x *xmlWriter, elem reflect.Value) error {
 	numFields := elem.NumField()
 	if numFields == 0 {
 		return nil
@@ -64,33 +72,35 @@ func (e *StdEncoder) encodeStructArgs(w io.Writer, elem reflect.Value) error {
 		// If this is first exported field - print out <params> tag
 		if !hasExportedFields {
 			hasExportedFields = true
-			_, _ = fmt.Fprint(w, "<params>")
+			x.raw("<params>")
 		}
 
-		_, _ = fmt.Fprint(w, "<param>")
-		if err := e.encodeValue(w, field.Interface()); err != nil {
+		x.raw("<param>")
+		if err := e.encodeValue(x, field.Interface()); err != nil {
 			return fmt.Errorf("cannot encode argument '%s': %w", elem.Type().Field(fN).Name, err)
 		}
-		_, _ = fmt.Fprint(w, "</param>")
+		x.raw("</param>")
 	}
 
 	// Only write closing </params> tag if at least one exported field is found
 	if hasExportedFields {
-		_, _ = fmt.Fprint(w, "</params>")
+		x.raw("</params>")
 	}
 
 	return nil
 }
 
-func (e *StdEncoder) encodeBareMapArgs(w io.Writer, elem reflect.Value) error {
+func (e *StdEncoder) encodeBareMapArgs(x *xmlWriter, elem reflect.Value) error {
 	if elem.Type().Key().Kind() != reflect.String {
 		return fmt.Errorf("unsupported type %s for bare map key, only string keys are supported", elem.Type().Key().Kind().String())
 	}
-	_, _ = fmt.Fprint(w, "<params><param>")
-	if err := e.encodeValue(w, elem.Interface()); err != nil {
+
+	x.raw("<params><param>")
+	if err := e.encodeValue(x, elem.Interface()); err != nil {
 		return fmt.Errorf("cannot encode bare map argument: %w", err)
 	}
-	_, _ = fmt.Fprint(w, "</param></params>")
+	x.raw("</param></params>")
+
 	return nil
 }
 
@@ -99,66 +109,61 @@ func (e *StdEncoder) encodeBareMapArgs(w io.Writer, elem reflect.Value) error {
 // In that case a <nil/> value is returned.
 //
 // See more: https://en.wikipedia.org/wiki/XML-RPC#Data_types
-func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
+func (e *StdEncoder) encodeValue(x *xmlWriter, value interface{}) error {
+	// Stop traversing as soon as the writer has failed - the remaining output is discarded
+	if x.err != nil {
+		return x.err
+	}
+
 	valueOf := reflect.ValueOf(value)
 	kind := valueOf.Kind()
 
 	// Handling pointers by following them.
 	if kind == reflect.Pointer {
 		if valueOf.IsNil() {
-			_, _ = fmt.Fprint(w, "<value><nil/></value>")
+			x.raw("<value><nil/></value>")
+
 			return nil
 		}
-		return e.encodeValue(w, valueOf.Elem().Interface())
+
+		return e.encodeValue(x, valueOf.Elem().Interface())
 	}
 
-	_, _ = fmt.Fprint(w, "<value>")
+	x.raw("<value>")
 	switch kind {
 	case reflect.Bool:
-		if err := e.encodeBoolean(w, value.(bool)); err != nil {
-			return fmt.Errorf("cannot encode boolean value: %w", err)
-		}
+		e.encodeBoolean(x, value.(bool))
 
 	case reflect.Int:
-		if err := e.encodeInteger(w, value.(int)); err != nil {
-			return fmt.Errorf("cannot encode integer value: %w", err)
-		}
+		e.encodeInteger(x, value.(int))
 
 	case reflect.Float64:
-		if err := e.encodeDouble(w, value.(float64)); err != nil {
-			return fmt.Errorf("cannot encode double value: %w", err)
-		}
+		e.encodeDouble(x, value.(float64))
 
 	case reflect.String:
-		if err := e.encodeString(w, value.(string)); err != nil {
-			return fmt.Errorf("cannot encode string value: %w", err)
-		}
+		e.encodeString(x, value.(string))
 
 	case reflect.Array, reflect.Slice:
 
 		if e.isByteArray(value) {
-			if err := e.encodeBase64(w, value.([]byte)); err != nil {
-				return fmt.Errorf("cannot encode byte-array value: %w", err)
-			}
+			e.encodeBase64(x, value.([]byte))
 		} else {
-			if err := e.encodeArray(w, value); err != nil {
+			if err := e.encodeArray(x, value); err != nil {
 				return fmt.Errorf("cannot encode array value: %w", err)
 			}
 		}
 
 	case reflect.Struct:
-		if reflect.TypeOf(value).String() != "time.Time" {
-			if err := e.encodeStruct(w, value); err != nil {
-				return fmt.Errorf("cannot encode struct value: %w", err)
-			}
+		if timeValue, ok := value.(time.Time); ok {
+			e.encodeTime(x, timeValue)
 		} else {
-			if err := e.encodeTime(w, value.(time.Time)); err != nil {
-				return fmt.Errorf("cannot encode time.Time value: %w", err)
+			if err := e.encodeStruct(x, value); err != nil {
+				return fmt.Errorf("cannot encode struct value: %w", err)
 			}
 		}
 
 	case reflect.Map:
-		if err := e.encodeMap(w, value); err != nil {
+		if err := e.encodeMap(x, value); err != nil {
 			return fmt.Errorf("cannot encode map value: %w", err)
 		}
 
@@ -166,69 +171,65 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 		return fmt.Errorf("unsupported type %v", kind)
 	}
 
-	_, _ = fmt.Fprint(w, "</value>")
+	x.raw("</value>")
+
 	return nil
 }
 
 func (e *StdEncoder) isByteArray(val interface{}) bool {
 	_, ok := val.([]byte)
+
 	return ok
 }
 
-func (e *StdEncoder) encodeInteger(w io.Writer, val int) error {
-	_, err := fmt.Fprintf(w, "<int>%d</int>", val)
-	return err
+func (e *StdEncoder) encodeInteger(x *xmlWriter, val int) {
+	x.element("int", strconv.Itoa(val))
 }
 
-func (e *StdEncoder) encodeDouble(w io.Writer, val float64) error {
-	_, err := fmt.Fprintf(w, "<double>%f</double>", val)
-	return err
+func (e *StdEncoder) encodeDouble(x *xmlWriter, val float64) {
+	x.element("double", fmt.Sprintf("%f", val))
 }
 
-func (e *StdEncoder) encodeBoolean(w io.Writer, val bool) error {
-	v := 0
+func (e *StdEncoder) encodeBoolean(x *xmlWriter, val bool) {
+	v := "0"
 	if val {
-		v = 1
+		v = "1"
 	}
-	_, err := fmt.Fprintf(w, "<boolean>%d</boolean>", v)
 
-	return err
+	x.element("boolean", v)
 }
 
-func (e *StdEncoder) encodeString(w io.Writer, val string) error {
-	_, _ = fmt.Fprint(w, "<string>")
-	if err := xml.EscapeText(w, []byte(val)); err != nil {
-		return fmt.Errorf("failed to escape string: %w", err)
-	}
-	_, _ = fmt.Fprint(w, "</string>")
-
-	return nil
+func (e *StdEncoder) encodeString(x *xmlWriter, val string) {
+	x.element("string", val)
 }
 
-func (e *StdEncoder) encodeArray(w io.Writer, val interface{}) error {
-	_, _ = fmt.Fprint(w, "<array><data>")
-	for i := 0; i < reflect.ValueOf(val).Len(); i++ {
-		if err := e.encodeValue(w, reflect.ValueOf(val).Index(i).Interface()); err != nil {
+func (e *StdEncoder) encodeArray(x *xmlWriter, val interface{}) error {
+	valueOf := reflect.ValueOf(val)
+
+	x.raw("<array><data>")
+	for i := 0; i < valueOf.Len(); i++ {
+		if err := e.encodeValue(x, valueOf.Index(i).Interface()); err != nil {
 			return fmt.Errorf("cannot encode array element at index %d: %w", i, err)
 		}
 	}
-
-	_, _ = fmt.Fprint(w, "</data></array>")
+	x.raw("</data></array>")
 
 	return nil
 }
 
-func (e *StdEncoder) encodeStruct(w io.Writer, val interface{}) error {
-	_, _ = fmt.Fprint(w, "<struct>")
+func (e *StdEncoder) encodeStruct(x *xmlWriter, val interface{}) error {
+	typeOf := reflect.TypeOf(val)
+	valueOf := reflect.ValueOf(val)
 
-	for i := 0; i < reflect.TypeOf(val).NumField(); i++ {
-		field := reflect.ValueOf(val).Field(i)
+	x.raw("<struct>")
+	for i := 0; i < typeOf.NumField(); i++ {
+		field := valueOf.Field(i)
 		// Skip over unexported fields
 		if !field.CanInterface() {
 			continue
 		}
 
-		fieldType := reflect.TypeOf(val).Field(i)
+		fieldType := typeOf.Field(i)
 		fieldName := fieldType.Name
 		tag := fieldType.Tag
 		if tag.Get("xml") != "" {
@@ -236,47 +237,33 @@ func (e *StdEncoder) encodeStruct(w io.Writer, val interface{}) error {
 		} else if tag.Get("xmlrpc") != "" {
 			fieldName = tag.Get("xmlrpc")
 		}
-		_, _ = fmt.Fprintf(w, "<member><name>%s</name>", fieldName)
 
-		if err := e.encodeValue(w, field.Interface()); err != nil {
+		x.raw("<member>")
+		x.element("name", fieldName)
+
+		if err := e.encodeValue(x, field.Interface()); err != nil {
 			return fmt.Errorf("cannot encode value of struct field '%s': %w", fieldName, err)
 		}
-		_, _ = fmt.Fprint(w, "</member>")
+		x.raw("</member>")
 	}
-	_, _ = fmt.Fprint(w, "</struct>")
+	x.raw("</struct>")
 
 	return nil
 }
 
-func (e *StdEncoder) encodeBase64(w io.Writer, val []byte) error {
-	_, err := fmt.Fprintf(w, "<base64>%s</base64>", base64.StdEncoding.EncodeToString(val))
-	return err
+func (e *StdEncoder) encodeBase64(x *xmlWriter, val []byte) {
+	x.element("base64", base64.StdEncoding.EncodeToString(val))
 }
 
-func (e *StdEncoder) encodeTime(w io.Writer, val time.Time) error {
-	formatted := timeFormatterOrDefault(e.timeFormatter).FormatTime(val)
-
-	if _, err := fmt.Fprint(w, "<dateTime.iso8601>"); err != nil {
-		return err
-	}
-
-	if err := xml.EscapeText(w, []byte(formatted)); err != nil {
-		return fmt.Errorf("failed to escape time value: %w", err)
-	}
-
-	if _, err := fmt.Fprint(w, "</dateTime.iso8601>"); err != nil {
-		return err
-	}
-
-	return nil
+func (e *StdEncoder) encodeTime(x *xmlWriter, val time.Time) {
+	x.element("dateTime.iso8601", timeFormatterOrDefault(e.timeFormatter).FormatTime(val))
 }
 
-func (e *StdEncoder) encodeMap(w io.Writer, val interface{}) error {
-	_, _ = fmt.Fprint(w, "<struct>")
-
+func (e *StdEncoder) encodeMap(x *xmlWriter, val interface{}) error {
 	mapValue := reflect.ValueOf(val)
 	iter := mapValue.MapRange()
 
+	x.raw("<struct>")
 	for iter.Next() {
 		key := iter.Key()
 		value := iter.Value()
@@ -284,15 +271,15 @@ func (e *StdEncoder) encodeMap(w io.Writer, val interface{}) error {
 		// Convert key to string
 		keyStr := fmt.Sprintf("%v", key.Interface())
 
-		_, _ = fmt.Fprintf(w, "<member><name>%s</name>", keyStr)
+		x.raw("<member>")
+		x.element("name", keyStr)
 
-		if err := e.encodeValue(w, value.Interface()); err != nil {
+		if err := e.encodeValue(x, value.Interface()); err != nil {
 			return fmt.Errorf("cannot encode map value for key '%s': %w", keyStr, err)
 		}
-
-		_, _ = fmt.Fprint(w, "</member>")
+		x.raw("</member>")
 	}
+	x.raw("</struct>")
 
-	_, _ = fmt.Fprint(w, "</struct>")
 	return nil
 }

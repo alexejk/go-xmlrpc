@@ -1,6 +1,7 @@
 package xmlrpc
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"strings"
@@ -339,7 +340,8 @@ func Test_encodeArray(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeArray(buf, tt.input)
+			x := newXMLWriter(buf)
+			err := enc.encodeArray(x, tt.input)
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -374,7 +376,9 @@ func Test_encodeBase64(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeBase64(buf, tt.input)
+			x := newXMLWriter(buf)
+			enc.encodeBase64(x, tt.input)
+			err := x.err
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -446,7 +450,8 @@ func Test_encodeStruct(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeStruct(buf, tt.input)
+			x := newXMLWriter(buf)
+			err := enc.encodeStruct(x, tt.input)
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -496,7 +501,9 @@ func Test_encodeTime(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeTime(buf, tt.input)
+			x := newXMLWriter(buf)
+			enc.encodeTime(x, tt.input)
+			err := x.err
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -565,7 +572,8 @@ func Test_encodeMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeMap(buf, tt.input)
+			x := newXMLWriter(buf)
+			err := enc.encodeMap(x, tt.input)
 			require.Equal(t, tt.err, err)
 
 			output := buf.String()
@@ -606,7 +614,9 @@ func Test_encodeTime_withTimeFormatter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
-			require.NoError(t, tt.encoder.encodeTime(buf, input))
+			x := newXMLWriter(buf)
+			tt.encoder.encodeTime(x, input)
+			require.NoError(t, x.err)
 			require.Equal(t, tt.expect, buf.String())
 		})
 	}
@@ -643,8 +653,93 @@ func Test_encodeTime_writerErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := (&StdEncoder{}).encodeTime(&failingWriter{limit: tt.limit}, input)
-			require.Error(t, err, "writer failure must not be discarded")
+			x := newXMLWriter(&failingWriter{limit: tt.limit})
+			(&StdEncoder{}).encodeTime(x, input)
+			require.Error(t, x.err, "writer failure must not be discarded")
 		})
 	}
+}
+
+func Test_Encode_escapesCallerSuppliedNames(t *testing.T) {
+	tests := []struct {
+		name       string
+		methodName string
+		args       interface{}
+		expect     string
+	}{
+		{
+			name:       "method name",
+			methodName: "evil&<method>",
+			expect:     "<methodName>evil&amp;&lt;method&gt;</methodName>",
+		},
+		{
+			name:       "struct member name from tag",
+			methodName: "t.M",
+			args: &struct {
+				Nested struct {
+					V string `xmlrpc:"bad&<name>"`
+				}
+			}{},
+			expect: "<name>bad&amp;&lt;name&gt;</name>",
+		},
+		{
+			name:       "map key",
+			methodName: "t.M",
+			args:       map[string]interface{}{"key&<x>": "v"},
+			expect:     "<name>key&amp;&lt;x&gt;</name>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := new(strings.Builder)
+			require.NoError(t, (&StdEncoder{}).Encode(buf, tt.methodName, tt.args))
+
+			require.Contains(t, buf.String(), tt.expect)
+			require.NoError(t, xml.Unmarshal([]byte(buf.String()), new(struct{})),
+				"output must remain well-formed XML")
+		})
+	}
+}
+
+func Test_Encode_writerErrorsAreNotDiscarded(t *testing.T) {
+	args := &struct {
+		S string
+		N int
+		F float64
+		M map[string]interface{}
+		A []int
+		T time.Time
+	}{
+		S: "value", N: 1, F: 2.5,
+		M: map[string]interface{}{"k": "v"},
+		A: []int{1, 2, 3},
+		T: time.Date(2019, 10, 11, 13, 40, 30, 0, time.UTC),
+	}
+
+	// Establish the full length, then fail at every possible offset within it
+	full := new(strings.Builder)
+	require.NoError(t, (&StdEncoder{}).Encode(full, "t.M", args))
+	total := full.Len()
+	require.Positive(t, total)
+
+	for limit := 0; limit < total; limit++ {
+		w := &failingWriter{limit: limit}
+		err := (&StdEncoder{}).Encode(w, "t.M", args)
+		require.Error(t, err, "failure at offset %d must be reported", limit)
+	}
+
+	// And the same writer with room to spare must succeed
+	require.NoError(t, (&StdEncoder{}).Encode(&failingWriter{limit: total}, "t.M", args))
+}
+
+func Test_Encode_writerErrorOutranksValueError(t *testing.T) {
+	// An unsupported argument type on its own is reported as such
+	err := (&StdEncoder{}).Encode(new(strings.Builder), "t.M", 42)
+	require.ErrorContains(t, err, "unsupported argument type")
+
+	// But when the writer has already failed, that failure is the root cause and must not
+	// be masked by the error it caused downstream
+	err = (&StdEncoder{}).Encode(&failingWriter{limit: 0}, "t.M", 42)
+	require.EqualError(t, err, "write failed")
 }
