@@ -63,11 +63,14 @@ jobs:
         run: |
           make build-in-docker
 
+      # Without disable_search the uploader also auto-discovers build/report.xml, the
+      # golangci-lint checkstyle output, and sends it as if it were coverage data
       - name: Code coverage
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.txt
+          disable_search: true
 
       # Skipped when the token is unavailable, which is always the case for pull
       # requests from forks - those must not fail the build
