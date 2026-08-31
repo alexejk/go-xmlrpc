@@ -14,9 +14,43 @@ on:
       - master
 
 jobs:
+  # Compatibility across the supported Go range: the minimum declared in go.mod, and
+  # the versions in use. GOTOOLCHAIN=local keeps a job on the version it selected, so
+  # raising the floor in go.mod fails here instead of silently downloading a newer one.
+  test:
+    name: Test on Go ${{ matrix.go }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.21', '1.25', '1.27']
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -count=1 ./...
+
+      # The Docker build cannot do this - the race detector needs cgo and that build
+      # sets CGO_ENABLED=0
+      - name: Test with race detector
+        run: go test -count=1 -race ./...
+
   build:
     name: Build on push
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,13 +63,17 @@ jobs:
         run: |
           make build-in-docker
 
+      # Without disable_search the uploader also auto-discovers build/report.xml, the
+      # golangci-lint checkstyle output, and sends it as if it were coverage data
       - name: Code coverage
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.txt
+          disable_search: true
 
+      # Skipped when the token is unavailable, which is always the case for pull
+      # requests from forks - those must not fail the build
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1

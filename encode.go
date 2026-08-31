@@ -101,7 +101,7 @@ func (e *StdEncoder) encodeValue(w io.Writer, value interface{}) error {
 	kind := valueOf.Kind()
 
 	// Handling pointers by following them.
-	if kind == reflect.Ptr {
+	if kind == reflect.Pointer {
 		if valueOf.IsNil() {
 			_, _ = fmt.Fprint(w, "<value><nil/></value>")
 			return nil
