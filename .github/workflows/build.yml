@@ -17,6 +17,8 @@ jobs:
   build:
     name: Build on push
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,7 +37,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.txt
 
+      # Skipped when the token is unavailable, which is always the case for pull
+      # requests from forks - those must not fail the build
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
