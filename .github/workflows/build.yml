@@ -66,7 +66,7 @@ jobs:
       # Without disable_search the uploader also auto-discovers build/report.xml, the
       # golangci-lint checkstyle output, and sends it as if it were coverage data
       - name: Code coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./build/coverage.txt
