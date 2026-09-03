@@ -1,8 +1,11 @@
 package xmlrpc
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -144,7 +147,7 @@ func TestStdEncoder_Encode(t *testing.T) {
 				Int:    123,
 				Double: float64(12345),
 			},
-			paramValidator: exactParamsValidator(`<param><value><int>123</int></value></param><param><value><double>12345.000000</double></value></param>`),
+			paramValidator: exactParamsValidator(`<param><value><int>123</int></value></param><param><value><double>12345.0</double></value></param>`),
 		},
 		{
 			name: "String arg - simple",
@@ -339,7 +342,8 @@ func Test_encodeArray(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeArray(buf, tt.input)
+			x := newXMLWriter(buf)
+			err := enc.encodeArray(x, tt.input)
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -374,7 +378,9 @@ func Test_encodeBase64(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeBase64(buf, tt.input)
+			x := newXMLWriter(buf)
+			enc.encodeBase64(x, tt.input)
+			err := x.err
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -446,7 +452,8 @@ func Test_encodeStruct(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeStruct(buf, tt.input)
+			x := newXMLWriter(buf)
+			err := enc.encodeStruct(x, tt.input)
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -496,7 +503,9 @@ func Test_encodeTime(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeTime(buf, tt.input)
+			x := newXMLWriter(buf)
+			enc.encodeTime(x, tt.input)
+			err := x.err
 
 			require.Equal(t, tt.err, err)
 			require.Equal(t, tt.expect, buf.String())
@@ -529,7 +538,7 @@ func Test_encodeMap(t *testing.T) {
 				"<member><name>string</name><value><string>value</string></value></member>",
 				"<member><name>int</name><value><int>42</int></value></member>",
 				"<member><name>bool</name><value><boolean>1</boolean></value></member>",
-				"<member><name>float</name><value><double>3.140000</double></value></member>",
+				"<member><name>float</name><value><double>3.14</double></value></member>",
 			},
 			err: nil,
 		},
@@ -565,7 +574,8 @@ func Test_encodeMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
 			enc := &StdEncoder{}
-			err := enc.encodeMap(buf, tt.input)
+			x := newXMLWriter(buf)
+			err := enc.encodeMap(x, tt.input)
 			require.Equal(t, tt.err, err)
 
 			output := buf.String()
@@ -606,7 +616,9 @@ func Test_encodeTime_withTimeFormatter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := new(strings.Builder)
-			require.NoError(t, tt.encoder.encodeTime(buf, input))
+			x := newXMLWriter(buf)
+			tt.encoder.encodeTime(x, input)
+			require.NoError(t, x.err)
 			require.Equal(t, tt.expect, buf.String())
 		})
 	}
@@ -643,8 +655,160 @@ func Test_encodeTime_writerErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := (&StdEncoder{}).encodeTime(&failingWriter{limit: tt.limit}, input)
-			require.Error(t, err, "writer failure must not be discarded")
+			x := newXMLWriter(&failingWriter{limit: tt.limit})
+			(&StdEncoder{}).encodeTime(x, input)
+			require.Error(t, x.err, "writer failure must not be discarded")
 		})
 	}
+}
+
+func Test_encodeDouble(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  float64
+		expect string
+		errMsg string
+	}{
+		{name: "zero", input: 0, expect: "<double>0.0</double>"},
+		{name: "negative zero", input: math.Copysign(0, -1), expect: "<double>-0.0</double>"},
+		{name: "integral", input: 12345, expect: "<double>12345.0</double>"},
+		{name: "negative", input: -12.214, expect: "<double>-12.214</double>"},
+		{name: "no padding to six decimals", input: 3.14, expect: "<double>3.14</double>"},
+		// %f used to truncate all of these to six decimal places
+		{name: "full float64 precision", input: 3.14159265358979, expect: "<double>3.14159265358979</double>"},
+		{name: "many significant digits", input: 0.1234567890123, expect: "<double>0.1234567890123</double>"},
+		{name: "small magnitude", input: 1e-10, expect: "<double>0.0000000001</double>"},
+		{name: "large magnitude", input: 1e20, expect: "<double>100000000000000000000.0</double>"},
+		{name: "no exponent notation", input: 1e21, expect: "<double>1000000000000000000000.0</double>"},
+		{name: "NaN is rejected", input: math.NaN(), errMsg: "unsupported value NaN"},
+		{name: "positive infinity is rejected", input: math.Inf(1), errMsg: "unsupported value +Inf"},
+		{name: "negative infinity is rejected", input: math.Inf(-1), errMsg: "unsupported value -Inf"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := new(strings.Builder)
+			x := newXMLWriter(buf)
+
+			err := (&StdEncoder{}).encodeDouble(x, tt.input)
+			if tt.errMsg != "" {
+				require.EqualError(t, err, tt.errMsg)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NoError(t, x.err)
+			require.Equal(t, tt.expect, buf.String())
+		})
+	}
+}
+
+func Test_encodeDouble_roundTrips(t *testing.T) {
+	// Every emitted value must parse back to the exact same float64
+	values := []float64{
+		0, 1, -1, 0.5, 3.14159265358979, 0.1234567890123, 1e-10, 1e20, 1e21,
+		math.SmallestNonzeroFloat64, math.MaxFloat64, -math.MaxFloat64,
+	}
+
+	for _, want := range values {
+		t.Run(strconv.FormatFloat(want, 'g', -1, 64), func(t *testing.T) {
+			buf := new(strings.Builder)
+			x := newXMLWriter(buf)
+			require.NoError(t, (&StdEncoder{}).encodeDouble(x, want))
+
+			wire := strings.TrimSuffix(strings.TrimPrefix(buf.String(), "<double>"), "</double>")
+			got, err := strconv.ParseFloat(wire, 64)
+			require.NoError(t, err)
+			require.Equal(t, want, got, "wire value %q must round-trip", wire)
+
+			// The specification permits only decimal point notation
+			require.Contains(t, wire, ".", "wire value %q must carry a decimal point", wire)
+			require.NotContains(t, wire, "e", "wire value %q must not use exponent notation", wire)
+		})
+	}
+}
+
+func Test_Encode_escapesCallerSuppliedNames(t *testing.T) {
+	tests := []struct {
+		name       string
+		methodName string
+		args       interface{}
+		expect     string
+	}{
+		{
+			name:       "method name",
+			methodName: "evil&<method>",
+			expect:     "<methodName>evil&amp;&lt;method&gt;</methodName>",
+		},
+		{
+			name:       "struct member name from tag",
+			methodName: "t.M",
+			args: &struct {
+				Nested struct {
+					V string `xmlrpc:"bad&<name>"`
+				}
+			}{},
+			expect: "<name>bad&amp;&lt;name&gt;</name>",
+		},
+		{
+			name:       "map key",
+			methodName: "t.M",
+			args:       map[string]interface{}{"key&<x>": "v"},
+			expect:     "<name>key&amp;&lt;x&gt;</name>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := new(strings.Builder)
+			require.NoError(t, (&StdEncoder{}).Encode(buf, tt.methodName, tt.args))
+
+			require.Contains(t, buf.String(), tt.expect)
+			require.NoError(t, xml.Unmarshal([]byte(buf.String()), new(struct{})),
+				"output must remain well-formed XML")
+		})
+	}
+}
+
+func Test_Encode_writerErrorsAreNotDiscarded(t *testing.T) {
+	args := &struct {
+		S string
+		N int
+		F float64
+		M map[string]interface{}
+		A []int
+		T time.Time
+	}{
+		S: "value", N: 1, F: 2.5,
+		M: map[string]interface{}{"k": "v"},
+		A: []int{1, 2, 3},
+		T: time.Date(2019, 10, 11, 13, 40, 30, 0, time.UTC),
+	}
+
+	// Establish the full length, then fail at every possible offset within it
+	full := new(strings.Builder)
+	require.NoError(t, (&StdEncoder{}).Encode(full, "t.M", args))
+	total := full.Len()
+	require.Positive(t, total)
+
+	for limit := 0; limit < total; limit++ {
+		w := &failingWriter{limit: limit}
+		err := (&StdEncoder{}).Encode(w, "t.M", args)
+		require.Error(t, err, "failure at offset %d must be reported", limit)
+	}
+
+	// And the same writer with room to spare must succeed
+	require.NoError(t, (&StdEncoder{}).Encode(&failingWriter{limit: total}, "t.M", args))
+}
+
+func Test_Encode_writerErrorOutranksValueError(t *testing.T) {
+	// An unsupported argument type on its own is reported as such
+	err := (&StdEncoder{}).Encode(new(strings.Builder), "t.M", 42)
+	require.ErrorContains(t, err, "unsupported argument type")
+
+	// But when the writer has already failed, that failure is the root cause and must not
+	// be masked by the error it caused downstream
+	err = (&StdEncoder{}).Encode(&failingWriter{limit: 0}, "t.M", 42)
+	require.EqualError(t, err, "write failed")
 }
