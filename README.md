@@ -51,6 +51,7 @@ For instance:
  - To customize any aspect of `http.Client` used to perform requests, use `HttpClient` option, otherwise `http.DefaultClient` will be used
  - To pass custom headers, make use of `Headers` option.
  - To not fail parsing when unmapped fields exist in RPC responses, use `SkipUnknownFields(true)` option (default is `false`)
+ - To change how `<dateTime.iso8601>` values are encoded and decoded, use `TimeFormat` option (default is `time.RFC3339`) - see [Time formats](#time-formats)
 
 ### Argument encoding
 
@@ -102,6 +103,50 @@ If XML-RPC response contains no value for well-known data-types, it will be deco
 
 As per XML-RPC specification, `<struct>` may not have an empty list of `<member>` elements, thus no default "empty" value is defined for it.
 Similarly, `<array/>` is considered invalid.
+
+### Time formats
+
+The XML-RPC specification defines `dateTime.iso8601` as ISO8601, but implementations disagree in practice - compact and extended forms, present or absent timezone offsets and fractional seconds are all encountered.
+By default this library encodes and decodes using `time.RFC3339`. The `TimeFormat` option changes that:
+
+```go
+c, err := xmlrpc.NewClient("https://example.com/rpc", xmlrpc.TimeFormat(&xmlrpc.LayoutTimeFormatter{
+    // Encode using the compact form from the specification's example: 19980717T14:08:55
+    FormatLayout: xmlrpc.LayoutISO8601Compact,
+    // Accept any of the commonly encountered forms when decoding
+    ParseLayouts: xmlrpc.CommonParseLayouts(),
+    // The compact layout carries no offset, so pin both directions to UTC
+    FormatLocation: time.UTC,
+    ParseLocation:  time.UTC,
+}))
+```
+
+Fields come in two pairs: `Format*` controls what goes on the wire, `Parse*` what is accepted off it. `FormatLayout` is the single layout used to encode; `ParseLayouts` are tried in order when decoding and default to `FormatLayout` when unset. When you do set `ParseLayouts` it is the complete list - `FormatLayout` is not added for you, so include it if this client should still read back what it writes. A few layout constants are provided:
+
+| Constant                     | Example                     |
+|------------------------------|-----------------------------|
+| `LayoutISO8601Compact`       | `19980717T14:08:55`         |
+| `LayoutISO8601CompactZoned`  | `19980717T14:08:55+0200`    |
+| `LayoutISO8601Basic`         | `19980717T140855`           |
+| `LayoutISO8601BasicZoned`    | `19980717T140855+0200`      |
+| `LayoutISO8601Extended`      | `1998-07-17T14:08:55`       |
+| `LayoutISO8601ExtendedZoned` | `1998-07-17T14:08:55+02:00` |
+
+ISO8601 calls the form without separators *basic* and the form with them *extended*. The layout shown in the XML-RPC specification's example is neither - a basic date with an extended time - and is called *compact* here. The specification does not mandate a layout, and leaves timezone assumptions to server documentation, which is why this is configurable at all. A fractional second is accepted on decode even though no layout declares one.
+
+Notes on timezones:
+
+* `ParseLocation` only applies to decoded values whose layout carries no offset - values that do carry one always keep it. Left unset it follows `time.Parse`: offset-less values are UTC, and an offset matching the process timezone yields that location along with its DST rules. Set it to decode into one location regardless of where the process runs.
+* `FormatLocation`, when set, converts values to that location before encoding. By default values are encoded in whichever location they carry, which is fine for zoned layouts but a trap for zone-less ones: a non-UTC `time.Time` would be written as its local wall-clock with no offset, and the receiver has no way to know. **Always set `FormatLocation` when `FormatLayout` carries no offset.**
+
+Servers doing something stranger than a fixed set of layouts can be handled by implementing the `TimeFormatter` interface directly:
+
+```go
+type TimeFormatter interface {
+    FormatTime(t time.Time) string
+    ParseTime(value string) (time.Time, error)
+}
+```
 
 ### Field renaming
 

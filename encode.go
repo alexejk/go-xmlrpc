@@ -15,7 +15,10 @@ type Encoder interface {
 }
 
 // StdEncoder is the default implementation of Encoder interface.
-type StdEncoder struct{}
+type StdEncoder struct {
+	// timeFormatter is optional - defaultTimeFormatter is used when unset.
+	timeFormatter TimeFormatter
+}
 
 func (e *StdEncoder) Encode(w io.Writer, methodName string, args interface{}) error {
 	_, _ = fmt.Fprintf(w, "<methodCall><methodName>%s</methodName>", methodName)
@@ -251,8 +254,21 @@ func (e *StdEncoder) encodeBase64(w io.Writer, val []byte) error {
 }
 
 func (e *StdEncoder) encodeTime(w io.Writer, val time.Time) error {
-	_, err := fmt.Fprintf(w, "<dateTime.iso8601>%s</dateTime.iso8601>", val.Format(time.RFC3339))
-	return err
+	formatted := timeFormatterOrDefault(e.timeFormatter).FormatTime(val)
+
+	if _, err := fmt.Fprint(w, "<dateTime.iso8601>"); err != nil {
+		return err
+	}
+
+	if err := xml.EscapeText(w, []byte(formatted)); err != nil {
+		return fmt.Errorf("failed to escape time value: %w", err)
+	}
+
+	if _, err := fmt.Fprint(w, "</dateTime.iso8601>"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (e *StdEncoder) encodeMap(w io.Writer, val interface{}) error {

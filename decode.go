@@ -26,6 +26,9 @@ type Decoder interface {
 // StdDecoder is the default implementation of the Decoder interface.
 type StdDecoder struct {
 	skipUnknownFields bool
+
+	// timeFormatter is optional - defaultTimeFormatter is used when unset.
+	timeFormatter TimeFormatter
 }
 
 func (d *StdDecoder) DecodeRaw(body []byte, v interface{}) error {
@@ -271,7 +274,8 @@ func (d *StdDecoder) decodeDateTime(value string) (time.Time, error) {
 	if value == "" {
 		return time.Time{}, nil
 	}
-	return time.Parse(time.RFC3339, value)
+
+	return timeFormatterOrDefault(d.timeFormatter).ParseTime(value)
 }
 
 func findFieldByNameOrTag(field reflect.Value, fName string) reflect.Value {

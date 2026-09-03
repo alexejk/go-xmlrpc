@@ -1,6 +1,7 @@
 package xmlrpc
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -576,6 +577,74 @@ func Test_encodeMap(t *testing.T) {
 			for _, expected := range tt.expect {
 				require.Contains(t, output, expected)
 			}
+		})
+	}
+}
+
+func Test_encodeTime_withTimeFormatter(t *testing.T) {
+	input := time.Date(2019, 10, 11, 13, 40, 30, 0, time.UTC)
+
+	tests := []struct {
+		name    string
+		encoder *StdEncoder
+		expect  string
+	}{
+		{
+			name:    "unset formatter retains RFC3339",
+			encoder: &StdEncoder{},
+			expect:  "<dateTime.iso8601>2019-10-11T13:40:30Z</dateTime.iso8601>",
+		},
+		{
+			name: "custom formatter",
+			encoder: &StdEncoder{
+				timeFormatter: &LayoutTimeFormatter{FormatLayout: LayoutISO8601Compact},
+			},
+			expect: "<dateTime.iso8601>20191011T13:40:30</dateTime.iso8601>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := new(strings.Builder)
+			require.NoError(t, tt.encoder.encodeTime(buf, input))
+			require.Equal(t, tt.expect, buf.String())
+		})
+	}
+}
+
+// failingWriter fails once more than limit bytes have been written, so a failure can be
+// injected at any point of an element.
+type failingWriter struct {
+	limit   int
+	written int
+}
+
+func (w *failingWriter) Write(p []byte) (int, error) {
+	if w.written+len(p) > w.limit {
+		return 0, errors.New("write failed")
+	}
+	w.written += len(p)
+
+	return len(p), nil
+}
+
+func Test_encodeTime_writerErrors(t *testing.T) {
+	input := time.Date(2019, 10, 11, 13, 40, 30, 0, time.UTC)
+
+	// Full output is "<dateTime.iso8601>2019-10-11T13:40:30Z</dateTime.iso8601>"
+	tests := []struct {
+		name  string
+		limit int
+	}{
+		{name: "fails on opening tag", limit: 0},
+		{name: "fails on value", limit: len("<dateTime.iso8601>")},
+		{name: "fails on closing tag", limit: len("<dateTime.iso8601>2019-10-11T13:40:30Z")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := (&StdEncoder{}).encodeTime(&failingWriter{limit: tt.limit}, input)
+			require.Error(t, err, "writer failure must not be discarded")
 		})
 	}
 }

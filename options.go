@@ -36,3 +36,20 @@ func SkipUnknownFields(skip bool) Option {
 		}
 	}
 }
+
+// TimeFormat option allows customizing how time.Time values are encoded to and decoded
+// from the XML-RPC <dateTime.iso8601> type. When unset, values are encoded and decoded
+// using time.RFC3339. See LayoutTimeFormatter for layout-based customization.
+//
+// This is only effective if using standard client, which in turn uses StdEncoder and StdDecoder.
+func TimeFormat(formatter TimeFormatter) Option {
+	return func(client *Client) {
+		if v, ok := client.codec.encoder.(*StdEncoder); ok {
+			v.timeFormatter = formatter
+		}
+
+		if v, ok := client.codec.decoder.(*StdDecoder); ok {
+			v.timeFormatter = formatter
+		}
+	}
+}
