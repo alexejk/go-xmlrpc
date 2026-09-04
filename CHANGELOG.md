@@ -1,3 +1,20 @@
+## 0.8.0
+
+Improvements:
+* Configurable `<dateTime.iso8601>` handling via the new `TimeFormatter` interface and the `TimeFormat(TimeFormatter)` option (#101).
+  The default `LayoutTimeFormatter` is driven by `time` layout strings and ships with named layouts for the compact, basic and extended ISO8601 forms, in both zoned and zone-less variants.
+  It can encode in one layout while accepting several on decode, and can pin the location used when a layout carries no timezone offset. `CommonParseLayouts()` returns the forms most often seen in the wild, for servers whose exact output is unknown.
+  The default encoding and decoding layout remains `time.RFC3339`, so existing code is unaffected unless it opts in.
+* Encoder hardening (#102).
+  Encoded values now go through a single XML writer that escapes them, so strings, struct member names and map keys containing `&`, `<` or `>` no longer produce malformed requests.
+  Write errors are no longer silently discarded: the first failure is latched and returned from the encoder.
+
+Breaking changes:
+* `<double>` values are now encoded with full round-trip precision instead of the fixed six decimal places of `%f`.
+  Values such as `1.5` now serialize as `1.5` rather than `1.500000`, and values with more than six decimals are no longer truncated.
+  Servers that parse doubles correctly are unaffected, but anything comparing the raw wire format will see different output.
+* Encoding `NaN`, `+Inf` or `-Inf` as a `<double>` now returns an error instead of writing a value no XML-RPC implementation can parse.
+
 ## 0.7.1
 
 Bugfixes:
